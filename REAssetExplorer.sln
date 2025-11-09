@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.App", "REAssetExplorer.UI\REAssetExplorer.App.csproj", "{FC93D85E-95F7-4329-8329-E4D378DFDE69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Core", "REAssetExplorer.Core\REAssetExplorer.Core.csproj", "{32E1E95A-F7AF-47AF-85F3-E0180C892ED2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Games.RE7", "REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj", "{08538E7C-0145-44B9-A824-7BCA92F9E54C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Games.RE8", "REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj", "{F959875C-E8AE-4D1C-9807-0C760EAE2E56}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FC93D85E-95F7-4329-8329-E4D378DFDE69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC93D85E-95F7-4329-8329-E4D378DFDE69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC93D85E-95F7-4329-8329-E4D378DFDE69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC93D85E-95F7-4329-8329-E4D378DFDE69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32E1E95A-F7AF-47AF-85F3-E0180C892ED2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32E1E95A-F7AF-47AF-85F3-E0180C892ED2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32E1E95A-F7AF-47AF-85F3-E0180C892ED2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32E1E95A-F7AF-47AF-85F3-E0180C892ED2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08538E7C-0145-44B9-A824-7BCA92F9E54C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08538E7C-0145-44B9-A824-7BCA92F9E54C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08538E7C-0145-44B9-A824-7BCA92F9E54C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08538E7C-0145-44B9-A824-7BCA92F9E54C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F9059668-47E1-4955-B3D4-677CBB63D9E5}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,154 @@
+﻿<Window x:Class="REAssetExplorer.UI.SelectGame"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:REAssetExplorer.UI"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:controls="clr-namespace:REAssetExplorer.App.Controls"
+        xmlns:helpers="clr-namespace:REAssetExplorer.UI.Helpers"
+        mc:Ignorable="d"
+        Background="#272727"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        ShowInTaskbar="True"
+        Title="SelectGame" Height="575" Width="525">
+    <Window.Resources>
+        <helpers:ReferenceEqualityConverter x:Key="ReferenceEqualityConverter" />
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <controls:WindowControls CanMaximize="False" />
+        
+        <StackPanel 
+            Grid.Row="0" 
+            Orientation="Horizontal" 
+            Margin="30" 
+            VerticalAlignment="Top"
+        >
+            <Border 
+                Width="44" 
+                Height="44" 
+                CornerRadius="6" 
+                Background="White" 
+                Margin="0,0,12,0"
+            >
+                <TextBlock 
+                    Text="RE" 
+                    VerticalAlignment="Center" 
+                    HorizontalAlignment="Center" 
+                    FontWeight="Bold" 
+                    FontSize="25"
+                    Foreground="#202020"
+                />
+            </Border>
+
+            <StackPanel Height="44">
+                <TextBlock Text="REAssetExplorer" 
+                           FontSize="20" 
+                           FontWeight="SemiBold"
+                           Foreground="White" />
+                <TextBlock Text="{Binding AppVersion, StringFormat='v{0}'}"
+                           FontSize="12"
+                           Foreground="#666" />
+            </StackPanel>
+        </StackPanel>
+
+        <ui:TextBlock 
+            FontTypography="Subtitle" 
+            Text="Select a game"
+            Foreground="White"
+            Grid.Row="1"
+            Margin="30,0,0,16"
+        />
+
+        <Border 
+            Grid.Row="2"
+            Margin="30 0 30 20"
+            Background="#323232"
+            CornerRadius="8"
+            Padding="12"
+        >
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled" Margin="10 0 0 0">
+
+                <ItemsControl ItemsSource="{Binding Games}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton Content="{Binding Name}"
+                                 GroupName="GamesGroup"
+                                 Tag="{Binding}"
+                                 Checked="GameRadioButton_Checked"
+                                 Margin="0 4"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </ScrollViewer>
+
+        </Border>
+        
+        <StackPanel 
+            Grid.Row="3" 
+            Orientation="Vertical" 
+            VerticalAlignment="Top"
+        >
+            <ui:TextBlock 
+                FontTypography="Subtitle" 
+                Text="Select game path"
+                Foreground="White"
+                Grid.Row="1"
+                Margin="30,0,0,16"
+            />
+            
+            <Border
+                Margin="30 0 30 20"
+                Background="#323232"
+                CornerRadius="8"
+                Padding="12"
+            >
+                <DockPanel LastChildFill="True">
+                    <Button Content="Select Folder"
+                            DockPanel.Dock="Right"
+                            Click="OnSelectFolderClick"
+                            Margin="8,0,0,0"/>
+                    <ui:TextBox PlaceholderText="Manually select the game path" x:Name="GamePath"/>
+                </DockPanel>
+
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="4" Margin="30 0 30 20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Content="Help" Padding="12 6" Margin="4" />
+            
+            <Button Grid.Column="1" Content="Update path" Padding="12 6" Margin="4" Click="OnUpdatePathClick" />
+
+            <!-- Filler -->
+            <Border Grid.Column="2"/>
+
+            <Button Grid.Column="3"
+                Content="CONTINUE"
+                Padding="16 8"
+                Margin="4"
+                Background="#2563EB"
+                Foreground="White"
+                FontWeight="SemiBold"
+                Click="OnContinueClick"
+            />
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,64 @@
+<UserControl x:Class="REAssetExplorer.App.Controls.WindowControls"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             MouseDown="DragWindow">
+    <Grid Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0"/>
+        
+        <StackPanel Orientation="Horizontal"
+                    Grid.Column="1"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Right"
+                    Margin="10">
+    
+            <!-- MINIMIZE -->
+            <Button Width="32" Height="22" Margin="0 0 10 0" Padding="0"
+                    Click="Minimize_Click">
+                <Grid>
+                    <ui:SymbolIcon Symbol="Subtract12"
+                                   FontSize="20"
+                                   Filled="True"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                </Grid>
+            </Button>
+            
+            <!-- MAXIMIZE -->
+            <Button Width="32" Height="22" Margin="0 0 10 0" Padding="0"
+                    Click="Maximize_Click" x:Name="MaximizeButton">
+                <Grid>
+                    <ui:SymbolIcon Symbol="WindowMultiple20"
+                                   FontSize="15"
+                                   Filled="True"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                </Grid>
+            </Button>
+    
+            <!-- CLOSE -->
+            <Button Width="32" Height="22"
+                    Padding="0"
+                    BorderThickness="0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Click="Close_Click" x:Name="CloseButton">
+                <Grid Width="10" Height="10">
+                    <Path Data="M 1 1 L 9 9 M 9 1 L 1 9"
+                          Stroke="White"
+                          StrokeThickness="2"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"/>
+                </Grid>
+            </Button>
+    
+        </StackPanel>
+    </Grid>
+</UserControl>

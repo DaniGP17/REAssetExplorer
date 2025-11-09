@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-rc.2.25502.107" />
+    <PackageReference Include="WPF-UI" Version="4.0.3" />
+    <PackageReference Include="WPFLocalizeExtension" Version="3.10.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="Views\SelectGame.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <XamlRuntime>Wpf</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+</Project>
