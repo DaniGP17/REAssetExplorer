@@ -1,0 +1,16 @@
+cmake-build-*/
+build/
+out/
+CMakeUserPresets.json
+
+bin/
+obj/
+*.user
+*.suo
+
+.idea/
+.vs/
+.vscode/
+
+Thumbs.db
+desktop.ini
