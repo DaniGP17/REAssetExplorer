@@ -7,6 +7,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:controls="clr-namespace:REAssetExplorer.App.Controls"
         xmlns:models="clr-namespace:REAssetExplorer.UI.Models"
+        xmlns:converters="clr-namespace:REAssetExplorer.UI.Converters"
         Background="#272727"
         mc:Ignorable="d"
         WindowStyle="None"
@@ -19,16 +20,24 @@
     <!-- If AllowTransparency is disabled the window can't be resized, so we have to find a way to remove white Border and allow window resize  -->
     
     <Window.Resources>
+        <converters:FileIconColorConverter x:Key="IconColorConverter"/>
+        
         <HierarchicalDataTemplate DataType="{x:Type models:TreeItem}"
                                   ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal">
                 <ui:SymbolIcon Symbol="{Binding Icon}"
                                FontSize="18"
                                Filled="True"
-                               Foreground="White"
                                Margin="0 0 5 0"
                                HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
+                               VerticalAlignment="Center">
+                    <ui:SymbolIcon.Foreground>
+                        <MultiBinding Converter="{StaticResource IconColorConverter}">
+                            <Binding Path="Icon"/>
+                            <Binding Path="IsFolder"/>
+                        </MultiBinding>
+                    </ui:SymbolIcon.Foreground>
+                </ui:SymbolIcon>
                 <TextBlock Text="{Binding Name}" />
             </StackPanel>
         </HierarchicalDataTemplate>
@@ -68,7 +77,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Width="32" Height="32" Margin="0 0 10 0" Padding="0">
+            <Button Grid.Column="0" Width="32" Height="32" Margin="0 0 10 0" Padding="0" Click="BackButton_Click">
                 <Grid>
                     <ui:SymbolIcon Symbol="ArrowCircleLeft12"
                                    FontSize="20"
@@ -79,7 +88,7 @@
                 </Grid>
             </Button>
 
-            <Button Grid.Column="1" Width="32" Height="32" Margin="0 0 10 0" Padding="0">
+            <Button Grid.Column="1" Width="32" Height="32" Margin="0 0 10 0" Padding="0" Click="UpButton_Click">
                 <Grid>
                     <ui:SymbolIcon Symbol="ArrowUp12"
                                    FontSize="20"
@@ -91,10 +100,12 @@
             </Button>
 
             <ui:TextBox Grid.Column="2"
-                        PlaceholderText="re_pack_0000.pak"
-                        Margin="0 0 10 0"/>
+                        x:Name="PathTextBox"
+                        Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}"
+                        Margin="0 0 10 0"
+                        KeyDown="PathTextBox_KeyDown"/>
 
-            <Button Grid.Column="3" Width="32" Height="32" Margin="0 0 10 0" Padding="0">
+            <Button Grid.Column="3" Width="32" Height="32" Margin="0 0 10 0" Padding="0" Click="RefreshButton_Click">
                 <Grid>
                     <ui:SymbolIcon Symbol="ArrowSync12"
                                    FontSize="20"
@@ -125,10 +136,12 @@
 
             <Border Grid.Column="0" Background="#323232" CornerRadius="8">
                 <TreeView 
+                    x:Name="FileTreeView"
                     ItemsSource="{Binding TreeManager.Root.Children}" 
                     Margin="10"
                     VirtualizingStackPanel.IsVirtualizing="True"
                     VirtualizingStackPanel.VirtualizationMode="Recycling"
+                    SelectedItemChanged="TreeView_SelectedItemChanged"
                 />
             </Border>
 
@@ -138,7 +151,75 @@
                           Background="Transparent"
                           ShowsPreview="True" />
 
-            <Border Grid.Column="2" Background="#323232" CornerRadius="3" Margin="10,0,0,0" />
+            <Border Grid.Column="2" Background="#323232" CornerRadius="3" Margin="10,0,0,0">
+                <ui:DataGrid Margin="10" 
+                             ItemsSource="{Binding DataGridFiles}"
+                             AutoGenerateColumns="False"
+                             CanUserAddRows="False"
+                             IsReadOnly="True"
+                             SelectionMode="Single"
+                             HeadersVisibility="Column">
+                    <ui:DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <EventSetter Event="MouseDoubleClick" Handler="DataGridRow_MouseDoubleClick"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#404040"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#383838"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:DataGrid.RowStyle>
+                    <ui:DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Name" Width="2*" MinWidth="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <ui:SymbolIcon Symbol="{Binding Icon}"
+                                                       FontSize="18"
+                                                       Filled="True"
+                                                       Margin="5 0 8 0"
+                                                       VerticalAlignment="Center">
+                                            <ui:SymbolIcon.Foreground>
+                                                <MultiBinding Converter="{StaticResource IconColorConverter}">
+                                                    <Binding Path="Icon"/>
+                                                    <Binding Path="IsFolder"/>
+                                                </MultiBinding>
+                                            </ui:SymbolIcon.Foreground>
+                                        </ui:SymbolIcon>
+                                        <TextBlock Text="{Binding Name}" 
+                                                   VerticalAlignment="Center"
+                                                   Foreground="White"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <DataGridTextColumn Header="Type" 
+                                            Binding="{Binding Type}" 
+                                            Width="*" 
+                                            MinWidth="100"/>
+                        
+                        <DataGridTextColumn Header="Size" 
+                                            Binding="{Binding Size}" 
+                                            Width="*" 
+                                            MinWidth="90"/>
+                        
+                        <DataGridTextColumn Header="Compressed" 
+                                            Binding="{Binding CompressedSize}" 
+                                            Width="*" 
+                                            MinWidth="90"/>
+                        
+                        <DataGridTextColumn Header="Checksum" 
+                                            Binding="{Binding Checksum}" 
+                                            Width="*" 
+                                            MinWidth="140"/>
+                    </ui:DataGrid.Columns>
+                </ui:DataGrid>
+            </Border>
         </Grid>
 
     </Grid>

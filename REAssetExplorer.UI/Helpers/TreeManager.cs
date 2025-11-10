@@ -76,14 +76,23 @@ public class TreeManager
 
     private void AddEntry(string pakName, PakEntry entry)
     {
-        var fullPath = $"{pakName}{PathSeparator}{entry.FilePath}";
+        var filePath = entry.FilePath;
+        
+        var fileName = System.IO.Path.GetFileName(filePath);
+        if (fileName.StartsWith("Unknown_", StringComparison.OrdinalIgnoreCase))
+        {
+            // Build path: pakName/[directoryPath]/Unknown/filename
+            filePath = $"Unknown{PathSeparator}{fileName}";
+        }
+        
+        var fullPath = $"{pakName}{PathSeparator}{filePath}";
         var pathParts = fullPath.Split(PathSeparator);
         var extension = IconMapper.GetRealExtension(fullPath);
         
-        BuildPathInTree(pathParts, extension);
+        BuildPathInTree(pathParts, extension, entry);
     }
 
-    private void BuildPathInTree(string[] pathParts, string extension)
+    private void BuildPathInTree(string[] pathParts, string extension, PakEntry? entry = null)
     {
         var currentNode = _root;
         
@@ -91,12 +100,13 @@ public class TreeManager
         {
             var part = pathParts[i];
             var isFolder = i < pathParts.Length - 1;
+            var isLastItem = i == pathParts.Length - 1;
             
-            currentNode = GetOrCreateChild(currentNode, part, isFolder, extension);
+            currentNode = GetOrCreateChild(currentNode, part, isFolder, extension, isLastItem ? entry : null);
         }
     }
 
-    private static TreeItem GetOrCreateChild(TreeItem parent, string name, bool isFolder, string extension)
+    private static TreeItem GetOrCreateChild(TreeItem parent, string name, bool isFolder, string extension, PakEntry? entry = null)
     {
         var existingChild = parent.Children.FirstOrDefault(c => c.Name == name);
         
@@ -114,6 +124,29 @@ public class TreeManager
                 : IconMapper.GetFileIcon(extension),
             Children = new List<TreeItem>()
         };
+        
+        // Add metadata for files
+        if (!isFolder && entry.HasValue)
+        {
+            var pakEntry = entry.Value;
+            var flags = new byte[8];
+            unsafe
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    flags[i] = pakEntry.Flags[i];
+                }
+            }
+            
+            newChild.Metadata = new FileMetadata
+            {
+                CompressedSize = pakEntry.CompressedSize,
+                UncompressedSize = pakEntry.UncompressedSize,
+                Checksum = pakEntry.Checksum,
+                Flags = flags,
+                IsCompressed = pakEntry.IsCompressed
+            };
+        }
         
         parent.Children.Add(newChild);
         return newChild;

@@ -20,7 +20,9 @@ public static class IconMapper
 
     private static readonly Dictionary<string, string> FolderIconMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        [".pak"] = "Box16"
+        ["*.pak"] = "Box16",
+        
+        ["Unknown"] = "BookQuestionMark24",
     };
 
     /// <summary>
@@ -37,16 +39,31 @@ public static class IconMapper
 
     /// <summary>
     /// Gets the icon identifier for a folder based on its name or extension.
+    /// Supports wildcard patterns (e.g., "*.pak") and exact names (e.g., "Unknown").
     /// </summary>
     /// <param name="folderName">The folder name or path.</param>
     /// <returns>The icon identifier.</returns>
     public static string GetFolderIcon(string folderName)
     {
-        var extension = System.IO.Path.GetExtension(folderName);
+        if (FolderIconMap.TryGetValue(folderName, out var icon))
+        {
+            return icon;
+        }
         
-        return FolderIconMap.TryGetValue(extension, out var icon) 
-            ? icon 
-            : DefaultFolderIcon;
+        foreach (var pattern in FolderIconMap.Keys)
+        {
+            if (pattern.StartsWith("*"))
+            {
+                // Wildcard pattern like "*.pak"
+                var extension = pattern.Substring(1); // Remove the '*'
+                if (folderName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    return FolderIconMap[pattern];
+                }
+            }
+        }
+        
+        return DefaultFolderIcon;
     }
 
     /// <summary>
