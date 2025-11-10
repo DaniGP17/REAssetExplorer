@@ -122,8 +122,10 @@
                              Margin="0 0 10 0"/>
 
             <ui:TextBox Grid.Column="5"
+                        x:Name="SearchTextBox"
                         PlaceholderText="Search file..."
-                        Width="200"/>
+                        Width="200"
+                        KeyDown="SearchTextBox_KeyDown"/>
         </Grid>
         
         
@@ -159,6 +161,23 @@
                              IsReadOnly="True"
                              SelectionMode="Single"
                              HeadersVisibility="Column">
+                    <ui:DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <ui:MenuItem Header="View" 
+                                         Icon="{ui:SymbolIcon Symbol=Eye16}"
+                                         Click="MenuItem_View_Click"/>
+                            <ui:MenuItem Header="View Hex" 
+                                         Icon="{ui:SymbolIcon Symbol=Code16}"
+                                         Click="MenuItem_ViewHex_Click"/>
+                            <Separator/>
+                            <ui:MenuItem Header="Export Raw" 
+                                         Icon="{ui:SymbolIcon Symbol=DocumentCopy16}"
+                                         Click="MenuItem_ExportRaw_Click"/>
+                            <ui:MenuItem Header="Extract Uncompressed" 
+                                         Icon="{ui:SymbolIcon Symbol=ArrowDownload16}"
+                                         Click="MenuItem_ExtractUncompressed_Click"/>
+                        </ContextMenu>
+                    </ui:DataGrid.ContextMenu>
                     <ui:DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
                             <EventSetter Event="MouseDoubleClick" Handler="DataGridRow_MouseDoubleClick"/>
@@ -217,6 +236,11 @@
                                             Binding="{Binding Checksum}" 
                                             Width="*" 
                                             MinWidth="140"/>
+                        
+                        <DataGridTextColumn Header="Compression" 
+                                            Binding="{Binding Compression}" 
+                                            Width="*" 
+                                            MinWidth="120"/>
                     </ui:DataGrid.Columns>
                 </ui:DataGrid>
             </Border>

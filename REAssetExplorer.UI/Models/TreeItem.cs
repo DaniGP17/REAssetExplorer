@@ -1,3 +1,5 @@
+using REAssetExplorer.Core.Pak;
+
 namespace REAssetExplorer.UI.Models;
 
 /// <summary>
@@ -46,4 +48,5 @@ public class FileMetadata
     public long Checksum { get; set; }
     public byte[] Flags { get; set; } = Array.Empty<byte>();
     public bool IsCompressed { get; set; }
+    public CompressionType Compression { get; set; }
 }

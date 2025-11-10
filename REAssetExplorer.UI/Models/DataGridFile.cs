@@ -36,6 +36,11 @@ public class DataGridFile
     public string Checksum { get; set; } = string.Empty;
     
     /// <summary>
+    /// The compression type used for the file.
+    /// </summary>
+    public string Compression { get; set; } = string.Empty;
+    
+    /// <summary>
     /// Reference to the original TreeItem.
     /// </summary>
     public TreeItem? TreeItemReference { get; set; }

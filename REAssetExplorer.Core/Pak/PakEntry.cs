@@ -51,4 +51,25 @@ public unsafe struct PakEntry
     /// Gets whether the file is compressed.
     /// </summary>
     public readonly bool IsCompressed => CompressedSize != UncompressedSize;
+    
+    /// <summary>
+    /// Gets the compression type used for this entry.
+    /// </summary>
+    public readonly CompressionType CompressionType
+    {
+        get
+        {
+            fixed (byte* ptr = Flags)
+            {
+                var compressionFlag = ptr[0] & 0x0F;
+                return compressionFlag switch
+                {
+                    0 => CompressionType.Uncompressed,
+                    1 => CompressionType.Deflated,
+                    2 => CompressionType.ZStandard,
+                    _ => CompressionType.Unknown
+                };
+            }
+        }
+    }
 }

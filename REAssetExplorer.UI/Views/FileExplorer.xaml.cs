@@ -17,6 +17,8 @@ public partial class FileExplorer : Window, INotifyPropertyChanged
     private bool _isUpdatingFromCode;
     private Stack<TreeItem> _navigationHistory;
     private string _currentPath;
+    private bool _isSearchMode;
+    private List<DataGridFile> _allFilesCache;
     
     public TreeManager TreeManager => TreeManager.Instance;
     
@@ -46,11 +48,14 @@ public partial class FileExplorer : Window, INotifyPropertyChanged
         _dataGridFiles = new ObservableCollection<DataGridFile>();
         _navigationHistory = new Stack<TreeItem>();
         _currentPath = string.Empty;
+        _allFilesCache = new List<DataGridFile>();
+        _isSearchMode = false;
         DataContext = this;
         
         // Initialize DataGrid with root items
         _currentTreeItem = TreeManager.Root;
         LoadTreeItemIntoDataGrid(TreeManager.Root);
+        BuildAllFilesCache();
     }
     
     private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -182,6 +187,12 @@ public partial class FileExplorer : Window, INotifyPropertyChanged
     
     private void LoadTreeItemIntoDataGrid(TreeItem treeItem)
     {
+        // Exit search mode when navigating normally
+        if (_isSearchMode)
+        {
+            _isSearchMode = false;
+        }
+        
         DataGridFiles.Clear();
         
         foreach (var child in treeItem.Children)
@@ -202,12 +213,14 @@ public partial class FileExplorer : Window, INotifyPropertyChanged
                 fileItem.Size = FormatFileSize(metadata.UncompressedSize);
                 fileItem.CompressedSize = metadata.IsCompressed ? FormatFileSize(metadata.CompressedSize) : "-";
                 fileItem.Checksum = $"0x{metadata.Checksum:X16}";
+                fileItem.Compression = metadata.Compression.ToString();
             }
             else
             {
                 fileItem.Size = "";
                 fileItem.CompressedSize = "";
                 fileItem.Checksum = "";
+                fileItem.Compression = "";
             }
             
             DataGridFiles.Add(fileItem);
@@ -392,6 +405,178 @@ public partial class FileExplorer : Window, INotifyPropertyChanged
         }
         
         return null;
+    }
+    
+    // Context menu handlers
+    private void MenuItem_View_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedFile = GetSelectedDataGridFile();
+        if (selectedFile == null || selectedFile.IsFolder)
+        {
+            return;
+        }
+    }
+    
+    private void MenuItem_ViewHex_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedFile = GetSelectedDataGridFile();
+        if (selectedFile == null || selectedFile.IsFolder)
+        {
+            return;
+        }
+    }
+    
+    private void MenuItem_ExportRaw_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedFile = GetSelectedDataGridFile();
+        if (selectedFile == null || selectedFile.IsFolder)
+        {
+            return;
+        }
+        
+    }
+    
+    private void MenuItem_ExtractUncompressed_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedFile = GetSelectedDataGridFile();
+        if (selectedFile == null || selectedFile.IsFolder)
+        {
+            return;
+        }
+    }
+    
+    private DataGridFile? GetSelectedDataGridFile()
+    {
+        // Find the DataGrid in the visual tree
+        var dataGrid = FindVisualChild<System.Windows.Controls.DataGrid>(this);
+        return dataGrid?.SelectedItem as DataGridFile;
+    }
+    
+    private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            
+            if (child is T typedChild)
+            {
+                return typedChild;
+            }
+            
+            var result = FindVisualChild<T>(child);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+        
+        return null;
+    }
+    
+    // Search functionality
+    private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is System.Windows.Controls.TextBox textBox)
+        {
+            var searchText = textBox.Text?.Trim();
+            
+            if (string.IsNullOrEmpty(searchText))
+            {
+                // Clear search and restore normal view
+                ExitSearchMode();
+                return;
+            }
+            
+            PerformSearch(searchText);
+        }
+    }
+    
+    private void BuildAllFilesCache()
+    {
+        _allFilesCache.Clear();
+        BuildFileCacheRecursive(TreeManager.Root);
+    }
+    
+    private void BuildFileCacheRecursive(TreeItem node)
+    {
+        foreach (var child in node.Children)
+        {
+            if (!child.IsFolder)
+            {
+                var fileItem = new DataGridFile
+                {
+                    Name = child.Name,
+                    Icon = child.Icon,
+                    Type = GetFileType(child.Name),
+                    TreeItemReference = child,
+                    IsFolder = false
+                };
+                
+                // Fill metadata for files
+                if (child.Metadata != null)
+                {
+                    var metadata = child.Metadata;
+                    fileItem.Size = FormatFileSize(metadata.UncompressedSize);
+                    fileItem.CompressedSize = metadata.IsCompressed ? FormatFileSize(metadata.CompressedSize) : "-";
+                    fileItem.Checksum = $"0x{metadata.Checksum:X16}";
+                    fileItem.Compression = metadata.Compression.ToString();
+                }
+                
+                _allFilesCache.Add(fileItem);
+            }
+            
+            if (child.Children.Count > 0)
+            {
+                BuildFileCacheRecursive(child);
+            }
+        }
+    }
+    
+    private void PerformSearch(string searchText)
+    {
+        _isSearchMode = true;
+        DataGridFiles.Clear();
+        
+        var searchResults = _allFilesCache
+            .Where(file => file.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(file => file.Name)
+            .ToList();
+        
+        if (searchResults.Count == 0)
+        {
+            StatusWindow info = new StatusWindow(StatusType.Warning);
+            info.UpdateMessage($"No files found matching '{searchText}'");
+            info.Show();
+        }
+        else
+        {
+            foreach (var file in searchResults)
+            {
+                DataGridFiles.Add(file);
+            }
+            
+            CurrentPath = $"Search results for: {searchText} ({searchResults.Count} files found)";
+        }
+    }
+    
+    private void ExitSearchMode()
+    {
+        if (!_isSearchMode) return;
+        
+        _isSearchMode = false;
+        
+        // Clear search text box
+        var searchBox = FindVisualChild<System.Windows.Controls.TextBox>(this);
+        if (searchBox?.Name == "SearchTextBox")
+        {
+            searchBox.Text = string.Empty;
+        }
+        
+        // Restore the current folder view
+        if (_currentTreeItem != null)
+        {
+            LoadTreeItemIntoDataGrid(_currentTreeItem);
+        }
     }
     
     public event PropertyChangedEventHandler? PropertyChanged;

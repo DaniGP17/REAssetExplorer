@@ -144,7 +144,8 @@ public class TreeManager
                 UncompressedSize = pakEntry.UncompressedSize,
                 Checksum = pakEntry.Checksum,
                 Flags = flags,
-                IsCompressed = pakEntry.IsCompressed
+                IsCompressed = pakEntry.IsCompressed,
+                Compression = pakEntry.CompressionType
             };
         }
         
