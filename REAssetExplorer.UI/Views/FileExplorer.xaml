@@ -1,25 +1,26 @@
-<Window x:Class="REAssetExplorer.App.Views.FileExplorer"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:local="clr-namespace:REAssetExplorer.App.Views"
-        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        xmlns:controls="clr-namespace:REAssetExplorer.App.Controls"
-        xmlns:models="clr-namespace:REAssetExplorer.UI.Models"
-        xmlns:converters="clr-namespace:REAssetExplorer.UI.Converters"
-        Background="#272727"
-        mc:Ignorable="d"
-        WindowStyle="None"
-        AllowsTransparency="False"
-        ShowInTaskbar="True"
-        WindowStartupLocation="CenterScreen"
-        MinWidth="700"
-        MinHeight="450"
-        Title="FileExplorer">
-    <!-- If AllowTransparency is disabled the window can't be resized, so we have to find a way to remove white Border and allow window resize  -->
+<ui:FluentWindow x:Class="REAssetExplorer.App.Views.FileExplorer"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                xmlns:local="clr-namespace:REAssetExplorer.App.Views"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                xmlns:controls="clr-namespace:REAssetExplorer.App.Controls"
+                xmlns:models="clr-namespace:REAssetExplorer.UI.Models"
+                xmlns:converters="clr-namespace:REAssetExplorer.UI.Converters"
+                mc:Ignorable="d"
+                WindowStartupLocation="CenterScreen"
+                MinWidth="700"
+                MinHeight="450"
+                Title="File Explorer"
+                ExtendsContentIntoTitleBar="True"
+                WindowBackdropType="Mica"
+                d:Background="#1E1E1E"
+                d:Foreground="#FFFFFF"
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}">
     
-    <Window.Resources>
+    <ui:FluentWindow.Resources>
         <converters:FileIconColorConverter x:Key="IconColorConverter"/>
         
         <HierarchicalDataTemplate DataType="{x:Type models:TreeItem}"
@@ -41,33 +42,21 @@
                 <TextBlock Text="{Binding Name}" />
             </StackPanel>
         </HierarchicalDataTemplate>
-    </Window.Resources>
+    </ui:FluentWindow.Resources>
     
-    <Grid Margin="5">
+    <Grid d:Background="#202020">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <DockPanel Grid.Row="0">
-            <Menu FontSize="14" DockPanel.Dock="Left" Background="Transparent">
-                <ui:MenuItem Header="File" Foreground="White" Icon="{ui:SymbolIcon Symbol=Document24}">
-                    <ui:MenuItem Header="New" InputGestureText="CTRL+N" />
-                    <ui:MenuItem Header="Open..." InputGestureText="CTRL+O" />
-                    <ui:MenuItem Header="Save" InputGestureText="CTRL+S" />
-                    <ui:MenuItem Header="Save As..." InputGestureText="CTRL+SHIFT+S" />
-                    <Separator />
-                    <ui:MenuItem Header="Exit" />
-                </ui:MenuItem>
-            </Menu>
-            
-            <controls:WindowControls />
-            
-            
-        </DockPanel>
+        <!-- Title Bar -->
+        <ui:TitleBar Grid.Row="0" 
+                     Title="File Explorer"
+                     Icon="pack://application:,,,/Assets/icon.ico"/>
         
-        <Grid Grid.Row="1" Margin="10 0 10 0">
+        <Grid Grid.Row="1" Margin="10,5,10,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
@@ -129,7 +118,7 @@
         </Grid>
         
         
-        <Grid Grid.Row="2" Margin="10">
+        <Grid Grid.Row="2" Margin="10,10,10,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="200" MaxWidth="600" />
                 <ColumnDefinition Width="10"/> <!-- Splitter -->
@@ -151,9 +140,9 @@
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
                           Background="Transparent"
-                          ShowsPreview="True" />
+                          ShowsPreview="False" />
 
-            <Border Grid.Column="2" Background="#323232" CornerRadius="3" Margin="10,0,0,0">
+            <Border Grid.Column="2" Background="#323232" CornerRadius="3" Margin="0,0,0,0">
                 <ui:DataGrid Margin="10" 
                              ItemsSource="{Binding DataGridFiles}"
                              AutoGenerateColumns="False"
@@ -162,7 +151,7 @@
                              SelectionMode="Single"
                              HeadersVisibility="Column">
                     <ui:DataGrid.ContextMenu>
-                        <ContextMenu>
+                        <ContextMenu Opened="ContextMenu_Opened">
                             <ui:MenuItem Header="View" 
                                          Icon="{ui:SymbolIcon Symbol=Eye16}"
                                          Click="MenuItem_View_Click"/>
@@ -176,6 +165,14 @@
                             <ui:MenuItem Header="Extract Uncompressed" 
                                          Icon="{ui:SymbolIcon Symbol=ArrowDownload16}"
                                          Click="MenuItem_ExtractUncompressed_Click"/>
+                            <Separator/>
+                            <ui:MenuItem Header="Copy Name" 
+                                         Icon="{ui:SymbolIcon Symbol=Copy16}"
+                                         Click="MenuItem_CopyName_Click"/>
+                            <ui:MenuItem Header="Open File Location" 
+                                         x:Name="OpenFileLocationMenuItem"
+                                         Icon="{ui:SymbolIcon Symbol=FolderOpen16}"
+                                         Click="MenuItem_OpenFileLocation_Click"/>
                         </ContextMenu>
                     </ui:DataGrid.ContextMenu>
                     <ui:DataGrid.RowStyle>
@@ -224,11 +221,13 @@
                         
                         <DataGridTextColumn Header="Size" 
                                             Binding="{Binding Size}" 
+                                            SortMemberPath="SizeBytes"
                                             Width="*" 
                                             MinWidth="90"/>
                         
                         <DataGridTextColumn Header="Compressed" 
                                             Binding="{Binding CompressedSize}" 
+                                            SortMemberPath="CompressedSizeBytes"
                                             Width="*" 
                                             MinWidth="90"/>
                         
@@ -247,4 +246,4 @@
         </Grid>
 
     </Grid>
-</Window>
+</ui:FluentWindow>

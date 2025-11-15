@@ -2,10 +2,11 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using REAssetExplorer.UI.Enums;
+using Wpf.Ui.Controls;
 
 namespace REAssetExplorer.App.Views;
 
-public partial class StatusWindow : Window, INotifyPropertyChanged
+public partial class StatusWindow : FluentWindow, INotifyPropertyChanged
 {
     private string _message = string.Empty;
 
@@ -25,6 +26,10 @@ public partial class StatusWindow : Window, INotifyPropertyChanged
     }
 
     public bool CanClose { get; }
+    
+    public StatusWindow() : this(StatusType.Loading, "Loading example text...") 
+    {
+    }
 
     public StatusWindow(StatusType type, string message = "")
     {

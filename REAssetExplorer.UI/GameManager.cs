@@ -15,6 +15,17 @@ public static class GameManager
 {
     private static StatusWindow? _statusWindow;
     private static Dictionary<string, PakFile> _loadedPakFiles = new();
+    private static IGameProvider? _currentGameProvider;
+    
+    /// <summary>
+    /// Gets the currently loaded game provider.
+    /// </summary>
+    public static IGameProvider? CurrentGameProvider => _currentGameProvider;
+    
+    /// <summary>
+    /// Gets the loaded PAK files.
+    /// </summary>
+    public static IReadOnlyDictionary<string, PakFile> LoadedPakFiles => _loadedPakFiles;
 
     /// <summary>
     /// Loads a game and displays its file explorer.
@@ -27,6 +38,7 @@ public static class GameManager
         ArgumentException.ThrowIfNullOrWhiteSpace(gameDirectory);
 
         gameProvider.GameDirectory = gameDirectory;
+        _currentGameProvider = gameProvider;
 
         var loadingService = App.Services.GetRequiredService<GameLoadingService>();
 

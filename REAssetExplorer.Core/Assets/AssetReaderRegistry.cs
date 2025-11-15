@@ -32,13 +32,20 @@ public class AssetReaderRegistry : IAssetReaderRegistry
         if (!_readers.TryGetValue(type, out var readers))
             return null;
 
-        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var lowerFileName = fileName.ToLowerInvariant();
 
-        // Try to find a reader that supports this extension
+        // Try to find a reader that supports this file
         foreach (var reader in readers.Cast<IAssetReader<T>>())
         {
-            if (reader.SupportedExtensions.Contains(extension))
-                return reader;
+            // Check each supported extension
+            foreach (var supportedExt in reader.SupportedExtensions)
+            {
+                // For compound extensions like .tex.35, check if filename ends with it
+                if (lowerFileName.EndsWith(supportedExt.ToLowerInvariant()))
+                {
+                    return reader;
+                }
+            }
         }
 
         return null;

@@ -49,4 +49,5 @@ public class FileMetadata
     public byte[] Flags { get; set; } = Array.Empty<byte>();
     public bool IsCompressed { get; set; }
     public CompressionType Compression { get; set; }
+    public PakEntry? PakEntry { get; set; }
 }

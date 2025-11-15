@@ -45,6 +45,7 @@ public class RE7Provider : IGameProvider
         var registry = new AssetReaderRegistry();
         
         // Register RE7-specific asset readers
+        registry.RegisterReader(new RE7TextureReader());
         registry.RegisterReader(new RE7MaterialReader());
         
         return registry;

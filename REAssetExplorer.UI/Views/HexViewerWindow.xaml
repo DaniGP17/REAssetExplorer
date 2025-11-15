@@ -1,0 +1,175 @@
+<ui:FluentWindow x:Class="REAssetExplorer.UI.Views.HexViewerWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                mc:Ignorable="d"
+                Title="Hex Viewer"
+                Width="900"
+                Height="600"
+                WindowStartupLocation="CenterScreen"
+                ExtendsContentIntoTitleBar="True"
+                WindowBackdropType="Mica"
+                d:Background="#1E1E1E"
+                d:Foreground="#FFFFFF"
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+    <Grid d:Background="#202020">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" 
+                     Title="Hex Viewer"
+                     Icon="pack://application:,,,/Assets/icon.ico"/>
+
+        <Border Grid.Row="1"
+                Background="#252526"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,0,0,1"
+                Padding="15">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0">
+                    <TextBlock x:Name="FileNameText"
+                               Text="File.bin"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="White"/>
+                    <TextBlock x:Name="FileSizeText"
+                               Text="Size: 0 bytes"
+                               FontSize="12"
+                               Foreground="#A0A0A0"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+                
+                <!-- Tools -->
+                <StackPanel Grid.Row="1" 
+                            Orientation="Horizontal" 
+                            Margin="0,10,0,0">
+                    <ui:TextBox x:Name="SearchBox"
+                                PlaceholderText="Search hex (e.g., 4D 5A) or text..."
+                                Width="250"
+                                Margin="0,0,10,0"
+                                KeyDown="SearchBox_KeyDown"/>
+                    <ui:Button Content="Find" 
+                               Click="FindButton_Click"
+                               Margin="0,0,10,0"/>
+                    <ui:TextBox x:Name="GotoOffsetBox"
+                                PlaceholderText="Go to offset (hex)..."
+                                Width="150"
+                                Margin="0,0,10,0"
+                                KeyDown="GotoOffsetBox_KeyDown"/>
+                    <ui:Button Content="Go" 
+                               Click="GotoButton_Click"
+                               Margin="0,0,10,0"/>
+                    <ui:Button Content="Export..." 
+                               Click="ExportButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="#1E1E1E"
+                BorderBrush="#3F3F46"
+                BorderThickness="1"
+                Margin="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <Border Grid.Row="0" 
+                        Background="#252526" 
+                        Padding="10,5"
+                        BorderBrush="#3F3F46"
+                        BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="490"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="Offset(h)" FontFamily="Consolas" FontSize="12" Foreground="#808080" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="1" Text="00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" FontFamily="Consolas" FontSize="12" Foreground="#808080" Margin="10,0,0,0" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Column="2" Text="Decoded text" FontFamily="Consolas" FontSize="12" Foreground="#808080" Margin="20,0,0,0" FontWeight="SemiBold"/>
+                    </Grid>
+                </Border>
+                
+                <ScrollViewer Grid.Row="1" 
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Auto"
+                              Background="#1E1E1E"
+                              x:Name="HexScrollViewer">
+                    <ItemsControl x:Name="HexItemsControl" Padding="10,5">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel VirtualizationMode="Recycling" IsVirtualizing="True"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="490"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Offset -->
+                                    <TextBlock Grid.Column="0" 
+                                               Text="{Binding Offset}" 
+                                               FontFamily="Consolas" 
+                                               FontSize="13" 
+                                               Foreground="#569CD6"
+                                               TextAlignment="Left"/>
+                                    
+                                    <!-- Hex Bytes -->
+                                    <TextBlock Grid.Column="1" 
+                                               Text="{Binding HexBytes}" 
+                                               FontFamily="Consolas" 
+                                               FontSize="13" 
+                                               Foreground="#D4D4D4"
+                                               Margin="10,0,0,0"
+                                               TextAlignment="Left"
+                                               Cursor="IBeam"/>
+                                    
+                                    <!-- ASCII Text -->
+                                    <TextBlock Grid.Column="2" 
+                                               Text="{Binding AsciiText}" 
+                                               FontFamily="Consolas" 
+                                               FontSize="13" 
+                                               Foreground="#CE9178"
+                                               Margin="20,0,0,0"
+                                               TextAlignment="Left"
+                                               Cursor="IBeam"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="3"
+                Background="#252526"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,1,0,0"
+                Padding="10,5">
+            <TextBlock x:Name="StatusText"
+                       Text="Ready"
+                       FontSize="12"
+                       Foreground="#A0A0A0"/>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

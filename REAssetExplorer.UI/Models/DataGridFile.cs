@@ -26,9 +26,19 @@ public class DataGridFile
     public string Size { get; set; } = string.Empty;
     
     /// <summary>
+    /// The numeric size in bytes for sorting.
+    /// </summary>
+    public long SizeBytes { get; set; }
+    
+    /// <summary>
     /// The compressed size of the file.
     /// </summary>
     public string CompressedSize { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// The numeric compressed size in bytes for sorting.
+    /// </summary>
+    public long CompressedSizeBytes { get; set; }
     
     /// <summary>
     /// The checksum of the file in hexadecimal.

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Games.RE7",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Games.RE8", "REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj", "{F959875C-E8AE-4D1C-9807-0C760EAE2E56}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "REAssetExplorer.Testing", "REAssetExplorer.Testing\REAssetExplorer.Testing.csproj", "{19047DEE-AFF5-4FCE-BF5C-BEF2D24E5D74}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F959875C-E8AE-4D1C-9807-0C760EAE2E56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19047DEE-AFF5-4FCE-BF5C-BEF2D24E5D74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19047DEE-AFF5-4FCE-BF5C-BEF2D24E5D74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19047DEE-AFF5-4FCE-BF5C-BEF2D24E5D74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19047DEE-AFF5-4FCE-BF5C-BEF2D24E5D74}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

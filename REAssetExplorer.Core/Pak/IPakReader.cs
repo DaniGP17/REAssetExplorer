@@ -19,4 +19,12 @@ public interface IPakReader
     /// <param name="file">The PAK file to enumerate.</param>
     /// <returns>Collection of PAK entries.</returns>
     IEnumerable<PakEntry> ListEntries(PakFile file);
+    
+    /// <summary>
+    /// Extracts the raw data of a file entry from the PAK file.
+    /// </summary>
+    /// <param name="pakFile">The PAK file containing the entry.</param>
+    /// <param name="entry">The entry to extract.</param>
+    /// <returns>The raw file data (decompressed if compressed).</returns>
+    byte[] ExtractFile(PakFile pakFile, PakEntry entry);
 }

@@ -145,7 +145,8 @@ public class TreeManager
                 Checksum = pakEntry.Checksum,
                 Flags = flags,
                 IsCompressed = pakEntry.IsCompressed,
-                Compression = pakEntry.CompressionType
+                Compression = pakEntry.CompressionType,
+                PakEntry = pakEntry
             };
         }
         

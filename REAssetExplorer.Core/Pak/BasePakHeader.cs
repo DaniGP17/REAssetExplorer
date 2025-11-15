@@ -23,4 +23,12 @@ public abstract class BasePakReader : IPakReader
         ArgumentNullException.ThrowIfNull(file);
         return file.Entries;
     }
+    
+    /// <summary>
+    /// Extracts the raw data of a file entry from the PAK file.
+    /// </summary>
+    /// <param name="pakFile">The PAK file containing the entry.</param>
+    /// <param name="entry">The entry to extract.</param>
+    /// <returns>The raw file data (decompressed if compressed).</returns>
+    public abstract byte[] ExtractFile(PakFile pakFile, PakEntry entry);
 }

@@ -1,3 +1,5 @@
+using ZstdSharp;
+
 namespace REAssetExplorer.Core.Pak;
 
 /// <summary>
@@ -28,6 +30,76 @@ public class PakReaderV4 : BasePakReader
         ReadEntries(br, pak, fileList);
 
         return pak;
+    }
+
+    /// <summary>
+    /// Extracts the raw data of a file entry from the PAK file.
+    /// </summary>
+    /// <param name="pakFile">The PAK file containing the entry.</param>
+    /// <param name="entry">The entry to extract.</param>
+    /// <returns>The raw file data (uncompressed if necessary).</returns>
+    public override byte[] ExtractFile(PakFile pakFile, PakEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(pakFile);
+        
+        if (!File.Exists(pakFile.Path))
+        {
+            throw new FileNotFoundException($"PAK file not found: {pakFile.Path}");
+        }
+
+        using var fs = File.OpenRead(pakFile.Path);
+        using var br = new BinaryReader(fs);
+
+        // Seek to the file data
+        fs.Seek(entry.Offset, SeekOrigin.Begin);
+
+        byte[] data = br.ReadBytes((int)entry.CompressedSize);
+
+        // If compressed, decompress it
+        if (entry.IsCompressed)
+        {
+            data = DecompressData(data, entry);
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// Decompresses data based on the compression type in the entry flags.
+    /// </summary>
+    private byte[] DecompressData(byte[] compressedData, PakEntry entry)
+    {
+        var compressionType = entry.CompressionType;
+
+        return compressionType switch
+        {
+            CompressionType.Uncompressed => compressedData,
+            CompressionType.Deflated => DecompressDeflate(compressedData, (int)entry.UncompressedSize),
+            CompressionType.ZStandard => DecompressZStandard(compressedData, (int)entry.UncompressedSize),
+            _ => throw new NotSupportedException($"Compression type {compressionType} is not supported.")
+        };
+    }
+
+    /// <summary>
+    /// Decompresses data using Deflate algorithm.
+    /// </summary>
+    private byte[] DecompressDeflate(byte[] compressedData, int uncompressedSize)
+    {
+        using var compressedStream = new MemoryStream(compressedData);
+        using var deflateStream = new System.IO.Compression.DeflateStream(compressedStream, System.IO.Compression.CompressionMode.Decompress);
+        using var decompressedStream = new MemoryStream(uncompressedSize);
+        
+        deflateStream.CopyTo(decompressedStream);
+        return decompressedStream.ToArray();
+    }
+
+    /// <summary>
+    /// Decompresses data using ZStandard algorithm.
+    /// </summary>
+    private byte[] DecompressZStandard(byte[] compressedData, int uncompressedSize)
+    {
+        using var decompressor = new Decompressor();
+        return decompressor.Unwrap(compressedData).ToArray();
     }
 
     private static PakHeader ReadHeader(BinaryReader reader)

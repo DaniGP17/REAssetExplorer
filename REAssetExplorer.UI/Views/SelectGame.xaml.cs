@@ -8,13 +8,14 @@ using Microsoft.Win32;
 using REAssetExplorer.App.Views;
 using REAssetExplorer.Core.Steam;
 using REAssetExplorer.UI.Enums;
+using Wpf.Ui.Controls;
 
 namespace REAssetExplorer.UI;
 
 /// <summary>
 /// Interaction logic for SelectGame.xaml
 /// </summary>
-public partial class SelectGame : Window, INotifyPropertyChanged
+public partial class SelectGame : FluentWindow, INotifyPropertyChanged
 {
     public ObservableCollection<IGameProvider> Games { get; }
     
