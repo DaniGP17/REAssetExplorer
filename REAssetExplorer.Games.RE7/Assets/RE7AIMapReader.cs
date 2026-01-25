@@ -1,16 +1,16 @@
-using REAssetExplorer.Core.Assets.Models;
+﻿using REAssetExplorer.Core.Assets.Models;
 
 namespace REAssetExplorer.Games.RE7.Assets;
 
 /// <summary>
-/// Reader for RE7 texture files (.tex).
+/// Reader for RE7 AI map files (.aimap).
 /// </summary>
-public class RE7TextureReader : TextureReaderBase
+public class RE7AIMapReader : AIMapReaderBase
 {
     private static readonly HashSet<string> _extensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".tex.35",
-        ".tex"
+        ".aimap.41",
+        ".aimap"
     };
 
     /// <inheritdoc/>
@@ -19,18 +19,12 @@ public class RE7TextureReader : TextureReaderBase
     /// <inheritdoc/>
     public override bool CanRead(string fileName, ReadOnlySpan<byte> header)
     {
-        if (header.Length < 0x98)
+        if (header.Length < 0x80)
         {
             return false;
         }
 
-        if (header[0] != 'T' || header[1] != 'E' || header[2] != 'X' || header[3] != 0x00)
-        {
-            return false;
-        }
-
-        uint version = BitConverter.ToUInt32(header.Slice(4, 4));
-        if (version != 35)
+        if (header[0] != 'A' || header[1] != 'I' || header[2] != 'M' || header[3] != 'P')
         {
             return false;
         }

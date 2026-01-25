@@ -40,10 +40,22 @@ public class AssetReaderRegistry : IAssetReaderRegistry
             // Check each supported extension
             foreach (var supportedExt in reader.SupportedExtensions)
             {
-                // For compound extensions like .tex.35, check if filename ends with it
-                if (lowerFileName.EndsWith(supportedExt.ToLowerInvariant()))
+                var lowerExt = supportedExt.ToLowerInvariant();
+                
+                if (lowerExt.Contains('*'))
                 {
-                    return reader;
+                    var pattern = lowerExt.Replace(".", "\\.").Replace("*", ".*");
+                    if (System.Text.RegularExpressions.Regex.IsMatch(lowerFileName, pattern + "$"))
+                    {
+                        return reader;
+                    }
+                }
+                else
+                {
+                    if (lowerFileName.EndsWith(lowerExt))
+                    {
+                        return reader;
+                    }
                 }
             }
         }

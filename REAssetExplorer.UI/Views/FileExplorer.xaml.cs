@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -457,6 +458,7 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         // Try to get appropriate reader based on file extension
         var textureReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.TextureData>(selectedFile.Name);
         var materialReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.MaterialData>(selectedFile.Name);
+        var audioBankReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.AudioBankData>(selectedFile.Name);
         
         if (textureReader != null)
         {
@@ -465,9 +467,51 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         }
         else if (materialReader != null)
         {
-            // TODO: Open material viewer when implemented
-            var infoWindow = new StatusWindow(StatusType.Warning, "Material viewer not yet implemented.");
-            infoWindow.ShowDialog();
+            // Read material data and open Material Viewer
+            try
+            {
+                var pakFile = FindPakFileForEntry(pakEntry.Value);
+                if (pakFile == null)
+                {
+                    var errorWindow = new StatusWindow(StatusType.Error, "PAK file not found for this material.");
+                    errorWindow.ShowDialog();
+                    return;
+                }
+
+                byte[] materialData = gameProvider.PakReader.ExtractFile(pakFile, pakEntry.Value);
+                var result = materialReader.Read(materialData, selectedFile.Name);
+
+                if (!result.IsSuccess)
+                {
+                    var errorWindow = new StatusWindow(StatusType.Error, $"Failed to read material: {result.Error}");
+                    errorWindow.ShowDialog();
+                    return;
+                }
+
+                var material = result.Value;
+                if (material != null)
+                {
+                    var materialViewer = new MaterialViewerWindow(material, 0);
+                    materialViewer.Show();
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorWindow = new StatusWindow(StatusType.Error, $"Error reading material: {ex.Message}");
+                errorWindow.ShowDialog();
+            }
+        }
+        else if (audioBankReader != null)
+        {
+            var pakFile = FindPakFileForEntry(pakEntry.Value);
+            if (pakFile == null)
+            {
+                var errorWindow = new StatusWindow(StatusType.Error, "PAK file not found for this material.");
+                errorWindow.ShowDialog();
+                return;
+            }
+            byte[] bnkData = gameProvider.PakReader.ExtractFile(pakFile, pakEntry.Value);
+            audioBankReader.Read(bnkData, selectedFile.Name);
         }
         else
         {

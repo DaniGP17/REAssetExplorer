@@ -38,14 +38,15 @@ public class RE8MaterialReader : IAssetReader<MaterialData>
             var name = Path.GetFileNameWithoutExtension(fileName);
             
             // Placeholder
-            var material = new MaterialData(
+            /*var material = new MaterialData(
                 Name: name,
                 ShaderName: "Unknown",
                 TextureReferences: Array.Empty<string>(),
                 Properties: new Dictionary<string, object>()
             );
 
-            return Result<MaterialData>.Success(material);
+            return Result<MaterialData>.Success(material);*/
+            return null;
         }
         catch (Exception ex)
         {

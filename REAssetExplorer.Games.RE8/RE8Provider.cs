@@ -43,6 +43,10 @@ public class RE8Provider : IGameProvider
         
         // Register RE8-specific asset readers
         registry.RegisterReader(new RE8MaterialReader());
+        registry.RegisterReader(new RE8TextureReader());
+        registry.RegisterReader(new RE8MeshReader());
+        registry.RegisterReader(new RE8AIMapReader());
+        registry.RegisterReader(new RE8BankReader());
         
         return registry;
     }

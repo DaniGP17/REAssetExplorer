@@ -27,6 +27,75 @@ public static class PakFileExtensions
     }
 
     /// <summary>
+    /// Finds an entry in the PAK file by filename (case-insensitive).
+    /// Searches for files that end with the specified filename.
+    /// </summary>
+    /// <param name="pakFile">The PAK file to search.</param>
+    /// <param name="fileName">The filename to search for (without path).</param>
+    /// <returns>The entry if found, null otherwise.</returns>
+    public static PakEntry? FindEntryByFileName(this PakFile pakFile, string fileName)
+    {
+        ArgumentNullException.ThrowIfNull(pakFile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+
+        var normalizedFileName = fileName.Replace('\\', '/').ToLowerInvariant();
+        
+        return pakFile.Entries.FirstOrDefault(e => 
+        {
+            if (string.IsNullOrEmpty(e.FilePath))
+                return false;
+            
+            var entryPath = e.FilePath.Replace('\\', '/').ToLowerInvariant();
+            return entryPath.EndsWith(normalizedFileName);
+        });
+    }
+
+    /// <summary>
+    /// Finds an entry in the PAK file by a partial path match (case-insensitive).
+    /// Searches for files whose path ends with the specified partial path.
+    /// Ignores numeric extensions (e.g., .35, .10) at the end of the file.
+    /// </summary>
+    /// <param name="pakFile">The PAK file to search.</param>
+    /// <param name="partialPath">The partial path to search for.</param>
+    /// <returns>The entry if found, null otherwise.</returns>
+    public static PakEntry? FindEntryByPartialPath(this PakFile pakFile, string partialPath)
+    {
+        ArgumentNullException.ThrowIfNull(pakFile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(partialPath);
+
+        var normalizedPath = partialPath.Replace('\\', '/').ToLowerInvariant();
+        
+        return pakFile.Entries.FirstOrDefault(e => 
+        {
+            if (string.IsNullOrEmpty(e.FilePath))
+                return false;
+            
+            var entryPath = e.FilePath.Replace('\\', '/').ToLowerInvariant();
+            
+            // Check if it ends with the path directly
+            if (entryPath.EndsWith(normalizedPath))
+                return true;
+            
+            // Check if it ends with the path + a numeric extension (e.g., .tex.35)
+            // Remove the last extension if it's numeric
+            var lastDotIndex = entryPath.LastIndexOf('.');
+            if (lastDotIndex > 0)
+            {
+                var extension = entryPath.Substring(lastDotIndex + 1);
+                // Check if the extension is numeric
+                if (extension.All(char.IsDigit))
+                {
+                    var pathWithoutNumericExt = entryPath.Substring(0, lastDotIndex);
+                    if (pathWithoutNumericExt.EndsWith(normalizedPath))
+                        return true;
+                }
+            }
+            
+            return false;
+        });
+    }
+
+    /// <summary>
     /// Reads a material asset from the PAK file.
     /// </summary>
     /// <param name="pakFile">The PAK file to read from.</param>

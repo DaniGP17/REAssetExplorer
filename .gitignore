@@ -419,3 +419,4 @@ FodyWeavers.xsd
 
 # Jetbrains
 .idea/
+build

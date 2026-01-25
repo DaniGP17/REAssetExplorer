@@ -33,5 +33,5 @@ public enum AssetType
     /// <summary>
     /// Audio/sound file.
     /// </summary>
-    Sound,
+    Bank,
 }

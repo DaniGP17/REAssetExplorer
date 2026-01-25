@@ -1,15 +1,15 @@
 using REAssetExplorer.Core.Assets.Models;
 
-namespace REAssetExplorer.Games.RE7.Assets;
+namespace REAssetExplorer.Games.RE8.Assets;
 
 /// <summary>
-/// Reader for RE7 texture files (.tex).
+/// Reader for RE8 texture files (.tex).
 /// </summary>
-public class RE7TextureReader : TextureReaderBase
+public class RE8TextureReader : TextureReaderBase
 {
     private static readonly HashSet<string> _extensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".tex.35",
+        ".tex.30",
         ".tex"
     };
 
