@@ -87,6 +87,7 @@ public class MeshMapper
 
         var lod0 = meshData.MeshLayout.MeshBodies[0];
         var materials = meshData.ResolvedDependencies.Values.OfType<MaterialData>().ToArray();
+        var materialLookup = BuildMaterialLookup(materials);
 
         foreach (var part in lod0.Parts)
         {
@@ -142,13 +143,13 @@ public class MeshMapper
 
                 // ---- SUBMESH ----
                 var materialName = meshData.Materials[cluster.MaterialId];
-                var matData = FindMdf(materials, materialName, out int matIdx);
+                materialLookup.TryGetValue(materialName, out var materialRef);
                 subMeshes.Add(new RenderSubMesh
                 {
                     IndexCount = indexCount,
                     StartIndex = startIndex,
                     BaseVertex = 0,
-                    Material = MaterialMapper.MapToRenderMaterial(materialName, matData, matIdx)
+                    Material = MaterialMapper.MapToRenderMaterial(materialName, materialRef.MaterialData, materialRef.MaterialIndex)
                 });
             }
         }
@@ -168,23 +169,20 @@ public class MeshMapper
         return renderMesh;
     }
 
-    private static MaterialData? FindMdf(MaterialData[] materials, string name, out int matIdx)
+    private static Dictionary<string, (MaterialData? MaterialData, int MaterialIndex)> BuildMaterialLookup(MaterialData[] materials)
     {
+        var lookup = new Dictionary<string, (MaterialData? MaterialData, int MaterialIndex)>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var materialData in materials)
         {
             for (int i = 0; i < materialData.MaterialHeaders.Length; i++)
             {
                 var header = materialData.MaterialHeaders[i];
-
-                if (header.MaterialName.Equals(name, StringComparison.OrdinalIgnoreCase))
-                {
-                    matIdx = i;
-                    return materialData;
-                }
+                lookup[header.MaterialName] = (materialData, i);
             }
         }
-        matIdx = -1;
-        return null;
+
+        return lookup;
     }
     
     private static BoundingBox CreateBounding(MeshData meshData)

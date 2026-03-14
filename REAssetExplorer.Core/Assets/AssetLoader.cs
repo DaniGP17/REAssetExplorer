@@ -13,8 +13,26 @@ public class AssetLoader : IAssetLoader
     private readonly IGameProvider _gameProvider;
     private readonly Dictionary<string, PakFile> _pakFiles;
     private readonly MaterialsCache? _materialsCache;
-    private readonly Dictionary<string, AssetData> _loadedAssets = new();
+    private readonly Dictionary<string, AssetData> _loadedAssets = new(StringComparer.Ordinal);
     private readonly DependencyResolverRegistry _resolverRegistry;
+    private readonly Dictionary<string, PakEntryReference> _entryByNormalizedPath = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PakEntryReference> _entryByTrimmedPath = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<PakEntryReference>> _entriesByTrimmedFileName = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PakEntryReference?> _resolvedEntryCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _bestVariantPathCache = new(StringComparer.Ordinal);
+
+    private readonly struct PakEntryReference
+    {
+        public PakEntryReference(PakFile pakFile, int entryIndex)
+        {
+            PakFile = pakFile;
+            EntryIndex = entryIndex;
+        }
+
+        public PakFile PakFile { get; }
+        public int EntryIndex { get; }
+        public PakEntry Entry => PakFile.Entries[EntryIndex];
+    }
     
     public AssetLoader(
         IGameProvider gameProvider, 
@@ -26,6 +44,7 @@ public class AssetLoader : IAssetLoader
         _pakFiles = pakFiles ?? throw new ArgumentNullException(nameof(pakFiles));
         _materialsCache = materialsCache;
         _resolverRegistry = resolverRegistry ?? CreateDefaultResolverRegistry();
+        BuildLookupIndexes();
     }
     
     /// <summary>
@@ -64,35 +83,44 @@ public class AssetLoader : IAssetLoader
         bool loadDependencies = true,
         Action<string>? onProgress = null) where T : AssetData
     {
-        onProgress?.Invoke($"Loading {filePath}...");
+        var normalizedPath = NormalizePath(filePath);
+        onProgress?.Invoke($"Loading {normalizedPath}...");
         
         // Check if already loaded
-        if (_loadedAssets.TryGetValue(filePath, out var cached) && cached is T cachedTyped)
+        if (_loadedAssets.TryGetValue(normalizedPath, out var cached) && cached is T cachedTyped)
         {
-            onProgress?.Invoke($"Using cached {filePath}");
+            onProgress?.Invoke($"Using cached {normalizedPath}");
             return Result<T>.Success(cachedTyped);
         }
         
         // Find the asset in PAK files
-        var (pakFile, entry) = FindAssetEntry(filePath);
+        var (pakFile, entry) = FindAssetEntry(normalizedPath);
         if (pakFile == null || entry == null)
         {
-            onProgress?.Invoke($"Asset not found in PAK: {filePath}");
-            return Result<T>.Failure($"Asset not found: {filePath}");
+            onProgress?.Invoke($"Asset not found in PAK: {normalizedPath}");
+            return Result<T>.Failure($"Asset not found: {normalizedPath}");
+        }
+
+        var resolvedPath = NormalizePath(entry.Value.FilePath);
+        if (_loadedAssets.TryGetValue(resolvedPath, out var resolvedCached) && resolvedCached is T resolvedTyped)
+        {
+            _loadedAssets[normalizedPath] = resolvedTyped;
+            onProgress?.Invoke($"Using cached {resolvedPath}");
+            return Result<T>.Success(resolvedTyped);
         }
         
         // Extract and read the asset
         try
         {
             var data = _gameProvider.PakReader.ExtractFile(pakFile, entry.Value);
-            var reader = _gameProvider.AssetReaders.GetReader<T>(filePath);
+            var reader = _gameProvider.AssetReaders.GetReader<T>(resolvedPath);
             
             if (reader == null)
             {
-                return Result<T>.Failure($"No reader found for: {filePath}");
+                return Result<T>.Failure($"No reader found for: {resolvedPath}");
             }
             
-            var result = reader.Read(data, filePath);
+            var result = reader.Read(data, resolvedPath);
             
             if (result.IsFailure)
             {
@@ -104,15 +132,15 @@ public class AssetLoader : IAssetLoader
             // Set basic properties if not already set
             if (string.IsNullOrEmpty(asset.Name))
             {
-                asset.Name = System.IO.Path.GetFileNameWithoutExtension(filePath);
+                asset.Name = System.IO.Path.GetFileNameWithoutExtension(resolvedPath);
             }
             if (string.IsNullOrEmpty(asset.FilePath))
             {
-                asset.FilePath = filePath;
+                asset.FilePath = resolvedPath;
             }
             if (string.IsNullOrEmpty(asset.Extension))
             {
-                asset.Extension = System.IO.Path.GetExtension(filePath);
+                asset.Extension = System.IO.Path.GetExtension(resolvedPath);
             }
             
             // Resolve dependencies using the appropriate resolver
@@ -130,17 +158,18 @@ public class AssetLoader : IAssetLoader
                 
                 if (asset.Dependencies.Count > 0)
                 {
-                    onProgress?.Invoke($"Resolved {asset.Dependencies.Count} dependencies for {filePath}");
+                    onProgress?.Invoke($"Resolved {asset.Dependencies.Count} dependencies for {resolvedPath}");
                 }
             }
             
             // Cache the asset
-            _loadedAssets[filePath] = asset;
+            _loadedAssets[normalizedPath] = asset;
+            _loadedAssets[resolvedPath] = asset;
             
             // Load dependencies if requested
             if (loadDependencies && asset.Dependencies.Count > 0)
             {
-                onProgress?.Invoke($"Loading {asset.Dependencies.Count} dependencies for {filePath}...");
+                onProgress?.Invoke($"Loading {asset.Dependencies.Count} dependencies for {resolvedPath}...");
                 LoadDependencies(asset, onProgress);
             }
             
@@ -148,7 +177,7 @@ public class AssetLoader : IAssetLoader
         }
         catch (Exception ex)
         {
-            return Result<T>.Failure($"Error loading {filePath}: {ex.Message}");
+            return Result<T>.Failure($"Error loading {resolvedPath}: {ex.Message}");
         }
     }
     
@@ -177,7 +206,7 @@ public class AssetLoader : IAssetLoader
         
         foreach (var dependency in asset.Dependencies)
         {
-            dependency.FilePath = dependency.FilePath?.ToLowerInvariant();
+            dependency.FilePath = NormalizePath(dependency.FilePath);
             if (string.IsNullOrEmpty(dependency.FilePath))
             {
                 onProgress?.Invoke($"Skipping dependency '{dependency.Name}': path not resolved");
@@ -260,7 +289,8 @@ public class AssetLoader : IAssetLoader
     /// <returns>The cached asset, or null if not found or wrong type.</returns>
     public T? GetLoadedAsset<T>(string filePath) where T : AssetData
     {
-        if (_loadedAssets.TryGetValue(filePath, out var asset) && asset is T typedAsset)
+        var normalizedPath = NormalizePath(filePath);
+        if (_loadedAssets.TryGetValue(normalizedPath, out var asset) && asset is T typedAsset)
         {
             return typedAsset;
         }
@@ -274,7 +304,7 @@ public class AssetLoader : IAssetLoader
     /// <returns>True if the asset is loaded, false otherwise.</returns>
     public bool IsAssetLoaded(string filePath)
     {
-        return _loadedAssets.ContainsKey(filePath);
+        return _loadedAssets.ContainsKey(NormalizePath(filePath));
     }
     
     /// <summary>
@@ -294,6 +324,60 @@ public class AssetLoader : IAssetLoader
     {
         return _loadedAssets.Values.OfType<T>();
     }
+
+    /// <summary>
+    /// Finds the best available asset variant for a given logical path.
+    /// For textures this prefers streaming/high-resolution variants without rescanning all PAK entries.
+    /// </summary>
+    public string FindBestVariantPath(string filePath)
+    {
+        var normalizedPath = NormalizePath(filePath);
+        if (string.IsNullOrEmpty(normalizedPath))
+            return normalizedPath;
+
+        if (_bestVariantPathCache.TryGetValue(normalizedPath, out var cachedPath))
+            return cachedPath;
+
+        var trimmedPath = TrimNumericExtension(normalizedPath);
+        var trimmedFileName = Path.GetFileName(trimmedPath);
+        if (string.IsNullOrEmpty(trimmedFileName) ||
+            !_entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var candidates) ||
+            candidates.Count == 0)
+        {
+            _bestVariantPathCache[normalizedPath] = normalizedPath;
+            return normalizedPath;
+        }
+
+        var canonicalQueryPath = CanonicalizeVariantPath(trimmedPath);
+        PakEntryReference? bestCandidate = null;
+        int bestScore = int.MinValue;
+        long bestSize = long.MinValue;
+
+        foreach (var candidate in candidates)
+        {
+            var candidatePath = NormalizePath(candidate.Entry.FilePath);
+            var candidateTrimmedPath = TrimNumericExtension(candidatePath);
+            var candidateCanonicalPath = CanonicalizeVariantPath(candidateTrimmedPath);
+            int score = ScoreVariantCandidate(canonicalQueryPath, candidateCanonicalPath);
+            if (score == int.MinValue)
+                continue;
+
+            long size = candidate.Entry.UncompressedSize;
+            if (score > bestScore || (score == bestScore && size > bestSize))
+            {
+                bestCandidate = candidate;
+                bestScore = score;
+                bestSize = size;
+            }
+        }
+
+        var bestPath = bestCandidate.HasValue
+            ? NormalizePath(bestCandidate.Value.Entry.FilePath)
+            : normalizedPath;
+
+        _bestVariantPathCache[normalizedPath] = bestPath;
+        return bestPath;
+    }
     
     /// <summary>
     /// Finds an asset entry in the PAK files.
@@ -303,26 +387,223 @@ public class AssetLoader : IAssetLoader
     /// <returns>A tuple with the PAK file and entry, or (null, null) if not found.</returns>
     private (PakFile? pakFile, PakEntry? entry) FindAssetEntry(string filePath)
     {
-        foreach (var pakFile in _pakFiles.Values)
+        var normalizedPath = NormalizePath(filePath);
+        if (string.IsNullOrEmpty(normalizedPath))
+            return (null, null);
+
+        if (_resolvedEntryCache.TryGetValue(normalizedPath, out var cachedResult))
         {
-            // Try exact match first
-            var entry = pakFile.Entries.FirstOrDefault(e => 
-                e.FilePath.Equals(filePath, StringComparison.OrdinalIgnoreCase));
-            
-            if (!string.IsNullOrEmpty(entry.FilePath))
+            return cachedResult.HasValue
+                ? (cachedResult.Value.PakFile, cachedResult.Value.Entry)
+                : (null, null);
+        }
+
+        if (_entryByNormalizedPath.TryGetValue(normalizedPath, out var exactMatch))
+        {
+            _resolvedEntryCache[normalizedPath] = exactMatch;
+            return (exactMatch.PakFile, exactMatch.Entry);
+        }
+
+        var trimmedPath = TrimNumericExtension(normalizedPath);
+        if (_entryByTrimmedPath.TryGetValue(trimmedPath, out var trimmedMatch))
+        {
+            _resolvedEntryCache[normalizedPath] = trimmedMatch;
+            return (trimmedMatch.PakFile, trimmedMatch.Entry);
+        }
+
+        var trimmedFileName = Path.GetFileName(trimmedPath);
+        if (!string.IsNullOrEmpty(trimmedFileName) &&
+            _entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var candidates))
+        {
+            PakEntryReference? bestCandidate = null;
+            int bestScore = int.MinValue;
+            long bestSize = long.MinValue;
+
+            foreach (var candidate in candidates)
             {
-                return (pakFile, entry);
+                var candidatePath = NormalizePath(candidate.Entry.FilePath);
+                var candidateTrimmedPath = TrimNumericExtension(candidatePath);
+                int score = ScoreLookupCandidate(normalizedPath, trimmedPath, candidatePath, candidateTrimmedPath);
+                if (score == int.MinValue)
+                    continue;
+
+                long size = candidate.Entry.UncompressedSize;
+                if (score > bestScore || (score == bestScore && size > bestSize))
+                {
+                    bestCandidate = candidate;
+                    bestScore = score;
+                    bestSize = size;
+                }
             }
-            
-            entry = pakFile.Entries.FirstOrDefault(e => 
-                e.FilePath.Contains(filePath, StringComparison.OrdinalIgnoreCase));
-            
-            if (!string.IsNullOrEmpty(entry.FilePath))
+
+            if (bestCandidate.HasValue)
             {
-                return (pakFile, entry);
+                _resolvedEntryCache[normalizedPath] = bestCandidate;
+                return (bestCandidate.Value.PakFile, bestCandidate.Value.Entry);
             }
         }
-        
+
+        _resolvedEntryCache[normalizedPath] = null;
         return (null, null);
+    }
+
+    private void BuildLookupIndexes()
+    {
+        foreach (var pakFile in _pakFiles.Values)
+        {
+            for (int i = 0; i < pakFile.Entries.Count; i++)
+            {
+                var entry = pakFile.Entries[i];
+                if (string.IsNullOrWhiteSpace(entry.FilePath))
+                    continue;
+
+                var entryRef = new PakEntryReference(pakFile, i);
+                var normalizedPath = NormalizePath(entry.FilePath);
+                var trimmedPath = TrimNumericExtension(normalizedPath);
+
+                AddOrReplaceBestEntry(_entryByNormalizedPath, normalizedPath, entryRef);
+                AddOrReplaceBestEntry(_entryByTrimmedPath, trimmedPath, entryRef);
+
+                var trimmedFileName = Path.GetFileName(trimmedPath);
+                if (!string.IsNullOrEmpty(trimmedFileName))
+                {
+                    if (!_entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var entries))
+                    {
+                        entries = new List<PakEntryReference>();
+                        _entriesByTrimmedFileName[trimmedFileName] = entries;
+                    }
+
+                    entries.Add(entryRef);
+                }
+            }
+        }
+
+        foreach (var entries in _entriesByTrimmedFileName.Values)
+        {
+            entries.Sort((left, right) => right.Entry.UncompressedSize.CompareTo(left.Entry.UncompressedSize));
+        }
+    }
+
+    private static void AddOrReplaceBestEntry(
+        Dictionary<string, PakEntryReference> index,
+        string key,
+        PakEntryReference candidate)
+    {
+        if (string.IsNullOrEmpty(key))
+            return;
+
+        if (index.TryGetValue(key, out var current) && current.Entry.UncompressedSize >= candidate.Entry.UncompressedSize)
+            return;
+
+        index[key] = candidate;
+    }
+
+    private static string NormalizePath(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return string.Empty;
+
+        return filePath.Replace('\\', '/').ToLowerInvariant();
+    }
+
+    private static string TrimNumericExtension(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path;
+
+        int slashIndex = path.LastIndexOf('/');
+        int dotIndex = path.LastIndexOf('.');
+        if (dotIndex <= slashIndex || dotIndex < 0)
+            return path;
+
+        for (int i = dotIndex + 1; i < path.Length; i++)
+        {
+            if (!char.IsDigit(path[i]))
+                return path;
+        }
+
+        return path[..dotIndex];
+    }
+
+    private static string CanonicalizeVariantPath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path;
+
+        return path.Replace("/streaming/", "/", StringComparison.Ordinal);
+    }
+
+    private static int ScoreLookupCandidate(
+        string normalizedQueryPath,
+        string trimmedQueryPath,
+        string candidatePath,
+        string candidateTrimmedPath)
+    {
+        if (candidatePath.Equals(normalizedQueryPath, StringComparison.Ordinal))
+            return 5000;
+
+        if (candidateTrimmedPath.Equals(trimmedQueryPath, StringComparison.Ordinal))
+            return 4500;
+
+        if (candidateTrimmedPath.EndsWith(trimmedQueryPath, StringComparison.Ordinal))
+            return 4000 + CountSharedPathSuffixSegments(trimmedQueryPath, candidateTrimmedPath);
+
+        if (candidatePath.EndsWith(normalizedQueryPath, StringComparison.Ordinal))
+            return 3500 + CountSharedPathSuffixSegments(normalizedQueryPath, candidatePath);
+
+        if (candidatePath.Contains(normalizedQueryPath, StringComparison.Ordinal))
+            return 3000 + CountSharedPathSuffixSegments(trimmedQueryPath, candidateTrimmedPath);
+
+        var queryFileName = Path.GetFileName(trimmedQueryPath);
+        var candidateFileName = Path.GetFileName(candidateTrimmedPath);
+        if (!candidateFileName.Equals(queryFileName, StringComparison.Ordinal))
+            return int.MinValue;
+
+        return 2000 + CountSharedPathSuffixSegments(
+            Path.GetDirectoryName(trimmedQueryPath) ?? string.Empty,
+            Path.GetDirectoryName(candidateTrimmedPath) ?? string.Empty);
+    }
+
+    private static int ScoreVariantCandidate(string canonicalQueryPath, string candidateCanonicalPath)
+    {
+        if (candidateCanonicalPath.Equals(canonicalQueryPath, StringComparison.Ordinal))
+            return 4000;
+
+        if (candidateCanonicalPath.EndsWith(canonicalQueryPath, StringComparison.Ordinal))
+            return 3000 + CountSharedPathSuffixSegments(canonicalQueryPath, candidateCanonicalPath);
+
+        var queryFileName = Path.GetFileName(canonicalQueryPath);
+        var candidateFileName = Path.GetFileName(candidateCanonicalPath);
+        if (!candidateFileName.Equals(queryFileName, StringComparison.Ordinal))
+            return int.MinValue;
+
+        return 2000 + CountSharedPathSuffixSegments(
+            Path.GetDirectoryName(canonicalQueryPath) ?? string.Empty,
+            Path.GetDirectoryName(candidateCanonicalPath) ?? string.Empty);
+    }
+
+    private static int CountSharedPathSuffixSegments(string left, string right)
+    {
+        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
+            return 0;
+
+        var leftSegments = left.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var rightSegments = right.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        int count = 0;
+        int leftIndex = leftSegments.Length - 1;
+        int rightIndex = rightSegments.Length - 1;
+
+        while (leftIndex >= 0 && rightIndex >= 0)
+        {
+            if (!leftSegments[leftIndex].Equals(rightSegments[rightIndex], StringComparison.Ordinal))
+                break;
+
+            count++;
+            leftIndex--;
+            rightIndex--;
+        }
+
+        return count;
     }
 }
