@@ -33,6 +33,12 @@ public static class Murmur3
         
         return MurmurHash3_x86_32(bytes, DefaultSeed);
     }
+    
+    public static uint MakeHash(string str)
+    {
+        var bytes = Encoding.ASCII.GetBytes(str);
+        return MurmurHash3_x86_32(bytes, DefaultSeed);
+    }
 
     private static string NormalizePath(string path, bool lower, bool changeCase)
     {

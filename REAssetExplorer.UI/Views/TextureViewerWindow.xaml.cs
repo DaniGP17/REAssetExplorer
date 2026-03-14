@@ -289,34 +289,30 @@ public partial class TextureViewerWindow : FluentWindow
         {
             var decoder = new BcDecoder();
             var bcFormat = GetCompressionFormat();
-            var decoded2D = decoder.DecodeRaw2D(mipData, width, height, bcFormat);
+            var decoded = decoder.DecodeRaw(mipData, width, height, bcFormat);
             
-            if (decoded2D.Width != width || decoded2D.Height != height)
+            if (decoded.Length != width * height)
             {
                 throw new InvalidOperationException(
-                    $"Decoded size mismatch. Expected: {width}x{height}, Got: {decoded2D.Width}x{decoded2D.Height}");
+                    $"Decoded size mismatch. Expected: {width * height} pixels, Got: {decoded.Length}");
             }
             
-            return ConvertToBgraPixelData(decoded2D, width, height);
+            return ConvertToBgraPixelData(decoded, width, height);
         });
     }
     
-    private byte[] ConvertToBgraPixelData(CommunityToolkit.HighPerformance.Memory2D<BCnEncoder.Shared.ColorRgba32> decoded2D, int width, int height)
+    private byte[] ConvertToBgraPixelData(BCnEncoder.Shared.ColorRgba32[] decoded, int width, int height)
     {
         byte[] pixels = new byte[width * height * 4];
         int index = 0;
         
-        for (int y = 0; y < height; y++)
+        for (int i = 0; i < decoded.Length; i++)
         {
-            var rowSpan = decoded2D.Span.GetRowSpan(y);
-            for (int x = 0; x < width; x++)
-            {
-                var pixel = rowSpan[x];
-                pixels[index++] = pixel.b;
-                pixels[index++] = pixel.g;
-                pixels[index++] = pixel.r;
-                pixels[index++] = pixel.a;
-            }
+            var pixel = decoded[i];
+            pixels[index++] = pixel.b;
+            pixels[index++] = pixel.g;
+            pixels[index++] = pixel.r;
+            pixels[index++] = pixel.a;
         }
         
         return pixels;
@@ -499,7 +495,7 @@ public partial class TextureViewerWindow : FluentWindow
             return;
         }
         
-        var saveDialog = new SaveFileDialog
+        var saveDialog = new WpfSaveFileDialog
         {
             FileName = Path.GetFileNameWithoutExtension(_fileName),
             Filter = format switch
@@ -599,8 +595,8 @@ public partial class TextureViewerWindow : FluentWindow
             
             var decoder = new BcDecoder();
             var bcFormat = GetCompressionFormat();
-            var decoded2D = decoder.DecodeRaw2D(mipData, mipWidth, mipHeight, bcFormat);
-            var pixelData = ConvertToBgraPixelData(decoded2D, mipWidth, mipHeight);
+            var decoded = decoder.DecodeRaw(mipData, mipWidth, mipHeight, bcFormat);
+            var pixelData = ConvertToBgraPixelData(decoded, mipWidth, mipHeight);
             
             // Convert BGRA to RGBA for DDS
             byte[] rgbaData = new byte[pixelData.Length];

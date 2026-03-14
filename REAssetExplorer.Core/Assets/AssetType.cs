@@ -34,4 +34,9 @@ public enum AssetType
     /// Audio/sound file.
     /// </summary>
     Bank,
+    
+    /// <summary>
+    /// Shader container file.
+    /// </summary>
+    Sdf
 }

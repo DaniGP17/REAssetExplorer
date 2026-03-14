@@ -1,7 +1,9 @@
 ﻿using REAssetExplorer.Core.Assets;
 using REAssetExplorer.Core.Games;
 using REAssetExplorer.Core.Pak;
+using REAssetExplorer.Core.Render;
 using REAssetExplorer.Games.RE7.Assets;
+using REAssetExplorer.Rendering.Pipeline;
 
 namespace REAssetExplorer.Games.RE7;
 
@@ -12,6 +14,8 @@ public class RE7Provider : IGameProvider
 {
     private static readonly IPakReader _pakReader = new PakReaderV4();
     private static readonly IAssetReaderRegistry _assetReaders = CreateAssetReaders();
+    private static readonly IShaderPreferences _shaderPreferences = new RE7ShaderPreferences();
+    private static readonly IShaderSystemDeps _shaderSystemDeps = new RE7ShaderSystemDeps();
     
     /// <inheritdoc/>
     public string Id => "re7";
@@ -26,9 +30,9 @@ public class RE7Provider : IGameProvider
     public string[] PaksLocations => new[]
     {
         "re_chunk_000.pak",
-        "dlc/re_dlc_stm_529930.pak",
+        /*"dlc/re_dlc_stm_529930.pak",
         "dlc/re_dlc_stm_530610.pak",
-        "dlc/re_dlc_stm_530611.pak",
+        "dlc/re_dlc_stm_530611.pak",*/
     };
     
     /// <inheritdoc/>
@@ -39,6 +43,10 @@ public class RE7Provider : IGameProvider
     
     /// <inheritdoc/>
     public string GameDirectory { get; set; } = string.Empty;
+    public object? ShaderPreferences => _shaderPreferences;
+    public object? ShaderSystemDeps => _shaderSystemDeps;
+    public static IShaderPreferences ShaderPreferencesTyped => _shaderPreferences;
+    public static IShaderSystemDeps ShaderSystemDepsTyped => _shaderSystemDeps;
 
     private static IAssetReaderRegistry CreateAssetReaders()
     {
@@ -50,6 +58,7 @@ public class RE7Provider : IGameProvider
         registry.RegisterReader(new RE7MeshReader());
         registry.RegisterReader(new RE7AIMapReader());
         registry.RegisterReader(new RE7BankReader());
+        registry.RegisterReader(new RE7SdfReader());
         
         return registry;
     }

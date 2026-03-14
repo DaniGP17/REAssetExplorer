@@ -26,6 +26,7 @@ public abstract class TextureReaderBase : IAssetReader<TextureData>
             ReadHeader(data, tex);
             ValidateTexture(tex, fileName);
             ReadMipHeaders(data, tex);
+            ReadMipData(data, tex);
 
             return Result<TextureData>.Success(tex);
         }
@@ -81,9 +82,44 @@ public abstract class TextureReaderBase : IAssetReader<TextureData>
             tex.Mips[i] = new MipHeader
             {
                 Offset = BitConverter.ToUInt64(data.Slice(off, 8)),
-                Size = BitConverter.ToUInt32(data.Slice(off + 8, 4)),
-                Padding = BitConverter.ToUInt32(data.Slice(off + 12, 4))
+                Size = BitConverter.ToUInt32(data.Slice(off + 12, 4)),
+                Padding = BitConverter.ToUInt32(data.Slice(off + 8, 4))
             };
         }
     }
+    
+    protected virtual void ReadMipData(ReadOnlySpan<byte> data, TextureData tex)
+    {
+        if (tex.Mips.Length == 0)
+        {
+            tex.RawMipData = Array.Empty<byte>();
+            return;
+        }
+
+        ulong minOffset = ulong.MaxValue;
+        ulong maxEnd = 0;
+
+        foreach (var mip in tex.Mips)
+        {
+            if (mip.Offset < minOffset)
+                minOffset = mip.Offset;
+
+            ulong end = mip.Offset + mip.Size;
+            if (end > maxEnd)
+                maxEnd = end;
+        }
+
+        ulong totalSize = maxEnd - minOffset;
+
+        if (maxEnd <= (ulong)data.Length)
+        {
+            tex.RawMipData = data.Slice((int)minOffset, (int)totalSize).ToArray();
+        }
+        else
+        {
+            throw new InvalidDataException("Mip data out of bounds");
+        }
+    }
+    
+    public bool ResolveDependencies(TextureData asset) => true;
 }

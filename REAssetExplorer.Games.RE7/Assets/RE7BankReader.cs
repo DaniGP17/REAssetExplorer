@@ -9,6 +9,7 @@ public class RE7BankReader : BankReaderBase
 {
     private static readonly HashSet<string> _extensions = new(StringComparer.OrdinalIgnoreCase)
     {
+        ".bnk.2.stm.*",
         ".bnk.2.stm",
         ".bnk.2",
         ".bnk"

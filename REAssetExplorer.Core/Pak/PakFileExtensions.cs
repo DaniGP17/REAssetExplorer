@@ -54,6 +54,7 @@ public static class PakFileExtensions
     /// Finds an entry in the PAK file by a partial path match (case-insensitive).
     /// Searches for files whose path ends with the specified partial path.
     /// Ignores numeric extensions (e.g., .35, .10) at the end of the file.
+    /// If multiple entries match, returns the largest one (by uncompressed size).
     /// </summary>
     /// <param name="pakFile">The PAK file to search.</param>
     /// <param name="partialPath">The partial path to search for.</param>
@@ -65,7 +66,8 @@ public static class PakFileExtensions
 
         var normalizedPath = partialPath.Replace('\\', '/').ToLowerInvariant();
         
-        return pakFile.Entries.FirstOrDefault(e => 
+        // Find all matching entries
+        var matchingEntries = pakFile.Entries.Where(e => 
         {
             if (string.IsNullOrEmpty(e.FilePath))
                 return false;
@@ -92,7 +94,13 @@ public static class PakFileExtensions
             }
             
             return false;
-        });
+        }).ToList();
+        
+        // If multiple matches found, return the one with the largest uncompressed size
+        // This ensures we get the high-quality version when duplicates exist
+        return matchingEntries.Count > 0 
+            ? matchingEntries.OrderByDescending(e => e.UncompressedSize).First()
+            : null;
     }
 
     /// <summary>

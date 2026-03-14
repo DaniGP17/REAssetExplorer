@@ -105,7 +105,7 @@ public partial class HexViewerWindow : FluentWindow
         int totalLines = (data.Length + BytesPerLine - 1) / BytesPerLine;
         
         // Clear existing lines on UI thread
-        Application.Current.Dispatcher.Invoke(() => _hexLines.Clear());
+        WpfApplication.Current.Dispatcher.Invoke(() => _hexLines.Clear());
         
         int linesToGenerate = Math.Min(totalLines, MaxInitialLines);
         _currentLoadedLines = linesToGenerate;
@@ -132,7 +132,7 @@ public partial class HexViewerWindow : FluentWindow
             if (batch.Count >= batchSize || line == linesToGenerate - 1)
             {
                 var currentBatch = batch.ToList();
-                Application.Current.Dispatcher.Invoke(() =>
+                WpfApplication.Current.Dispatcher.Invoke(() =>
                 {
                     foreach (var item in currentBatch)
                     {
@@ -143,7 +143,7 @@ public partial class HexViewerWindow : FluentWindow
             }
         }
         
-        Application.Current.Dispatcher.Invoke(() =>
+        WpfApplication.Current.Dispatcher.Invoke(() =>
         {
             if (totalLines > MaxInitialLines)
             {
@@ -371,7 +371,7 @@ public partial class HexViewerWindow : FluentWindow
                 newLines.Add(hexLine);
             }
             
-            Application.Current.Dispatcher.Invoke(() =>
+            WpfApplication.Current.Dispatcher.Invoke(() =>
             {
                 foreach (var line in newLines)
                 {

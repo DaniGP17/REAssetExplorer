@@ -31,11 +31,11 @@ public class FileIconColorConverter : IMultiValueConverter
         {
             if (IconColorMap.TryGetValue(icon, out var colorHex))
             {
-                return new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+                return new SolidColorBrush((WpfColor)WpfColorConverter.ConvertFromString(colorHex));
             }
         }
         
-        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(IconColorMap["DEFAULT"]));
+        return new SolidColorBrush((WpfColor)WpfColorConverter.ConvertFromString(IconColorMap["DEFAULT"]));
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)

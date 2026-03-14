@@ -26,6 +26,9 @@ public class Vector3
         Y = y;
         Z = z;
     }
+    
+    public static Vector3 UnitX => new Vector3(1, 0, 0);
+    public static Vector3 UnitY => new Vector3(0, 1, 0);
 
     public float Magnitude()
     {
@@ -113,5 +116,10 @@ public class Vector3
     public override int GetHashCode()
     {
         return HashCode.Combine(X, Y, Z);
+    }
+    
+    public System.Numerics.Vector3 ToNumerics()
+    {
+        return new System.Numerics.Vector3(X, Y, Z);
     }
 }

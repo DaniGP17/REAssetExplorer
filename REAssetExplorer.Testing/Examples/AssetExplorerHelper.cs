@@ -23,6 +23,21 @@ public static class AssetExplorerHelper
         
         return pakFile;
     }
+    
+    public static PakFile LoadRE8Pak()
+    {
+        Console.WriteLine(" Loading RE8 PAK file...");
+        
+        var fileList = new PakFileList();
+        fileList.SetupFromFile(TestDataPaths.RE8FileList);
+
+        var pakReader = new PakReaderV4();
+        var pakFile = pakReader.Open(TestDataPaths.RE8MainPak, fileList);
+        
+        Console.WriteLine($" PAK loaded: {pakFile.Entries.Count:N0} entries\n");
+        
+        return pakFile;
+    }
 
     public static List<PakEntry> FindFilesByExtension(PakFile pakFile, string extension, int maxResults = 10)
     {

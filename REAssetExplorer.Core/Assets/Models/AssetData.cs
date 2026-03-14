@@ -1,3 +1,4 @@
+using System.Linq;
 using REAssetExplorer.Core.Pak;
 
 namespace REAssetExplorer.Core.Assets.Models;
@@ -83,4 +84,43 @@ public abstract class AssetData
     /// Whether this asset has valid data.
     /// </summary>
     public virtual bool IsValid => !string.IsNullOrEmpty(Name) && RawData.Length > 0;
+
+    // === DEPENDENCY SYSTEM ===
+    
+    /// <summary>
+    /// List of dependencies (metadata) that this asset requires.
+    /// </summary>
+    public List<AssetDependency> Dependencies { get; set; } = new List<AssetDependency>();
+    
+    /// <summary>
+    /// Dictionary of resolved dependencies (actual loaded asset objects).
+    /// Key: FilePath of the dependency
+    /// Value: The loaded AssetData object
+    /// </summary>
+    public Dictionary<string, AssetData> ResolvedDependencies { get; set; } = new Dictionary<string, AssetData>();
+    
+    /// <summary>
+    /// Gets a resolved dependency by its file path.
+    /// </summary>
+    /// <typeparam name="T">The expected type of the dependency.</typeparam>
+    /// <param name="filePath">The file path of the dependency.</param>
+    /// <returns>The resolved dependency, or null if not found or wrong type.</returns>
+    public T? GetResolvedDependency<T>(string filePath) where T : AssetData
+    {
+        if (ResolvedDependencies.TryGetValue(filePath, out var dependency))
+        {
+            return dependency as T;
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Gets all resolved dependencies of a specific type.
+    /// </summary>
+    /// <typeparam name="T">The type of dependencies to retrieve.</typeparam>
+    /// <returns>Collection of resolved dependencies of the specified type.</returns>
+    public IEnumerable<T> GetResolvedDependencies<T>() where T : AssetData
+    {
+        return ResolvedDependencies.Values.OfType<T>();
+    }
 }

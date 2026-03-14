@@ -42,4 +42,12 @@ public interface IGameProvider
     /// The root directory where the game is installed.
     /// </summary>
     string GameDirectory { get; set; }
+    
+    /// <summary>
+    /// Game-specific shader preferences for pipeline building (optional).
+    /// Returns null if the game doesn't provide custom shader preferences.
+    /// </summary>
+    object? ShaderPreferences { get; }
+    
+    object? ShaderSystemDeps { get; }
 }

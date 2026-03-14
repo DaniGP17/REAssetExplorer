@@ -444,3 +444,106 @@ public class RE7BankReaderTests : IClassFixture<PakFileFixture>
         Console.WriteLine($"\nSummary: {successCount} Banks read, {emptyNameCount} with empty names");
     }
 }
+
+public class RE7SdfReaderTests : IClassFixture<PakFileFixture>
+{
+    private readonly PakFileFixture _fixture;
+    private readonly RE7SdfReader _reader;
+    
+    public RE7SdfReaderTests(PakFileFixture fixture)
+    {
+        _fixture = fixture;
+        _reader = new RE7SdfReader();
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    [SlowTest]
+    public void Read_WithValidSdfFile_ReturnsSuccess()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        var sdfEntry = pakFile.Entries.FirstOrDefault(e => 
+            e.FilePath?.Contains("env_default.mmtr") == true);
+        
+        if (sdfEntry.FilePath == null)
+        {
+            return;
+        }
+        
+        var data = _fixture.ExtractFile(pakFile, sdfEntry);
+        var result = _reader.Read(data!, sdfEntry.FilePath);
+        
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        
+        if (result.IsSuccess)
+        {
+            Console.WriteLine($"SDF loaded: {sdfEntry.FilePath}");
+            Console.WriteLine($"Data size: {data!.Length} bytes");
+        }
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    [SlowTest]
+    public void Read_AllSdfFiles_ShouldSucceed()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        
+        var summary = AssetReaderTestHelper.TestAllAssetsOfType<RE7SdfReader, SdfData>(
+            _fixture,
+            pakFile,
+            ".mmtr.220128762",
+            _reader,
+            maxFiles: null
+        );
+        
+        summary.PrintReport("RE7 SDF");
+        
+        AssetReaderTestHelper.AssertMinimumSuccessRate(summary, 100, "SDF");
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    public void Read_SdfFiles_ShouldHaveValidStructure()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        var sdfEntries = pakFile.Entries
+            .Where(e => e.FilePath?.EndsWith(".mmtr.220128762") == true)
+            .Take(10)
+            .ToList();
+        
+        if (sdfEntries.Count == 0)
+        {
+            return;
+        }
+        
+        int successCount = 0;
+        int emptyNameCount = 0;
+        
+        foreach (var entry in sdfEntries)
+        {
+            var data = _fixture.ExtractFile(pakFile, entry);
+            var result = _reader.Read(data!, entry.FilePath);
+            
+            if (result.IsSuccess)
+            {
+                result.Value.Should().NotBeNull();
+                successCount++;
+                
+                if (string.IsNullOrEmpty(result.Value!.Name))
+                {
+                    emptyNameCount++;
+                    Console.WriteLine($" {entry.FilePath}: (empty name)");
+                }
+                else
+                {
+                    Console.WriteLine($" {entry.FilePath}: {result.Value.Name}");
+                }
+            }
+        }
+        
+        successCount.Should().BeGreaterThan(0, "At least some SDF files should be readable");
+        Console.WriteLine($"\nSummary: {successCount} SDF read, {emptyNameCount} with empty names");
+    }
+}

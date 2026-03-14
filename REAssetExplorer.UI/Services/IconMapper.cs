@@ -15,13 +15,14 @@ public static class IconMapper
         ["mesh"] = "SelectObject24",
         ["motlist"] = "PersonWalking16",
         ["wcbk"] = "HeadphonesSoundWave20",
-        ["wcc"] = "HeadphonesSoundWave20"
+        ["wcc"] = "HeadphonesSoundWave20",
+        ["bnk"] = "HeadphonesSoundWave20",
+        ["pck"] = "Headphones20",
     };
 
     private static readonly Dictionary<string, string> FolderIconMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["*.pak"] = "Box16",
-        
         ["Unknown"] = "BookQuestionMark24",
     };
 
@@ -68,6 +69,7 @@ public static class IconMapper
 
     /// <summary>
     /// Extracts the real file extension, handling numbered extensions (e.g., .tex.123).
+    /// Returns the first extension after the base filename.
     /// </summary>
     /// <param name="fullPath">The full file path.</param>
     /// <returns>The extracted extension without the dot.</returns>
@@ -75,14 +77,9 @@ public static class IconMapper
     {
         var parts = fullPath.Split('.');
 
-        if (parts.Length < 2)
+        if (parts.Length < 3)
             return string.Empty;
 
-        var lastPart = parts[^1];
-
-        // If the last part is a number, use the second-to-last part as the extension
-        return int.TryParse(lastPart, out _) 
-            ? parts[^2] 
-            : lastPart;
+        return parts[2];
     }
 }

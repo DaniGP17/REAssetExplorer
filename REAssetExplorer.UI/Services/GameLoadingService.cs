@@ -2,6 +2,7 @@ using REAssetExplorer.Core.Games;
 using REAssetExplorer.Core.Pak;
 using REAssetExplorer.UI.Local;
 using REAssetExplorer.UI.Remote;
+using System.IO;
 
 namespace REAssetExplorer.UI.Services;
 
@@ -13,13 +14,16 @@ public class GameLoadingService
     private readonly FileListStorage _storage;
     private readonly FileListApiClient _apiClient;
     private readonly PakLoader _pakLoader;
+    private readonly CacheService _cacheService;
 
     public GameLoadingService(
         FileListStorage storage,
-        FileListApiClient apiClient)
+        FileListApiClient apiClient,
+        CacheService cacheService)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
         _pakLoader = new PakLoader();
     }
 
@@ -56,7 +60,14 @@ public class GameLoadingService
         onProgress?.Invoke("Loading PAK files...");
 
         var fileListPath = _storage.GetPath(gameProvider.Id);
-        var result = await _pakLoader.LoadPakFilesAsync(gameProvider, fileListPath);
+        var cachePath = _cacheService.GetCacheFilePath("Materials");
+        
+        var result = await _pakLoader.LoadPakFilesAsync(
+            gameProvider, 
+            fileListPath, 
+            cachePath, 
+            loadMaterials: true, 
+            onProgress);
 
         if (result.IsFailure)
         {
@@ -66,6 +77,11 @@ public class GameLoadingService
 
         return result.Value;
     }
+    
+    /// <summary>
+    /// Gets the PakLoader instance to access materials cache.
+    /// </summary>
+    public PakLoader PakLoader => _pakLoader;
 
     private async Task<bool> DownloadFileListAsync(string gameId, Action<string>? onProgress)
     {

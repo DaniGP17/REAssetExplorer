@@ -20,6 +20,12 @@ public class TextureData : AssetData
     public MipHeader[] Mips { get; set; } = Array.Empty<MipHeader>();
     public int NumImages => MipInfo & 0x0FFF;
     public int MipsPerImage => MipInfo >> 12;
+    
+    /// <summary>
+    /// Raw compressed texture data from the first mip level.
+    /// This data is in the format specified by the Format property (BC1, BC3, BC5, BC7, etc.)
+    /// </summary>
+    public byte[] RawMipData { get; set; } = Array.Empty<byte>();
 }
 
 public struct MipHeader

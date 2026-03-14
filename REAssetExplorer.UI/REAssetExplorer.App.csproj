@@ -6,13 +6,17 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <Version>1.0.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BCnEncoder.Net" Version="2.2.1" />
+    <PackageReference Include="BCnEncoder.Net" Version="2.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-rc.2.25502.107" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
+    <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
     <PackageReference Include="SharpDX" Version="4.2.0" />
     <PackageReference Include="SharpDX.D3DCompiler" Version="4.2.0" />
     <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
@@ -26,6 +30,11 @@
     <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
     <ProjectReference Include="..\REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj" />
     <ProjectReference Include="..\REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Rendering\REAssetExplorer.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Dependencies\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Dependencies" />
   </ItemGroup>
 
   <ItemGroup>

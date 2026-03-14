@@ -16,6 +16,8 @@ public class Vector2
         X = x;
         Y = y;
     }
+    
+    public static Vector2 Zero => new Vector2(0, 0);
 
     public float Magnitude()
     {

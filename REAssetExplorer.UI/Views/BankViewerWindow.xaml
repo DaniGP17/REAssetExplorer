@@ -1,0 +1,378 @@
+<ui:FluentWindow x:Class="REAssetExplorer.UI.Views.BankViewerWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                mc:Ignorable="d"
+                Title="Audio Bank Viewer"
+                Height="700"
+                Width="900"
+                MinHeight="500"
+                MinWidth="700"
+                WindowStartupLocation="CenterScreen"
+                ExtendsContentIntoTitleBar="True"
+                WindowBackdropType="Mica"
+                d:Background="#1E1E1E"
+                d:Foreground="#FFFFFF"
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+
+    <Grid d:Background="#202020">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" 
+                     Title="Audio Bank Viewer"
+                     Icon="pack://application:,,,/Assets/icon.ico"/>
+
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Audio List and Player Area -->
+            <Border Grid.Column="0" 
+                    Background="#1E1E1E"
+                    BorderBrush="#3F3F46"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Margin="0,0,10,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Audio Files List -->
+                    <Border Grid.Row="0" Margin="10">
+                        <Grid>
+                            <DataGrid x:Name="AudioFilesGrid"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      SelectionMode="Single"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="None"
+                                      Background="#252526"
+                                      BorderThickness="0"
+                                      RowBackground="#2D2D30"
+                                      AlternatingRowBackground="#252526"
+                                      SelectionChanged="AudioFilesGrid_SelectionChanged"
+                                      PreviewMouseLeftButtonDown="AudioFilesGrid_PreviewMouseLeftButtonDown">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="80"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Size" Binding="{Binding SizeFormatted}" Width="100"/>
+                                    <DataGridTextColumn Header="Duration" Binding="{Binding DurationFormatted}" Width="100"/>
+                                </DataGrid.Columns>
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#0E639C"/>
+                                                <Setter Property="BorderBrush" Value="#007ACC"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                            </DataGrid>
+
+                            <!-- Loading Indicator -->
+                            <ui:ProgressRing x:Name="LoadingIndicator"
+                                             IsIndeterminate="True"
+                                             Width="60"
+                                             Height="60"
+                                             Visibility="Collapsed"/>
+
+                            <!-- Error Message -->
+                            <TextBlock x:Name="ErrorMessage"
+                                       Foreground="#FF4444"
+                                       FontSize="14"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="20"
+                                       Visibility="Collapsed"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Audio Player Controls -->
+                    <Border Grid.Row="1" 
+                            Background="#252526"
+                            BorderBrush="#3F3F46"
+                            BorderThickness="0,1,0,0"
+                            Padding="15">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Now Playing Info -->
+                            <TextBlock x:Name="NowPlayingText"
+                                       Grid.Row="0"
+                                       Text="No audio selected"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,10"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <!-- Progress Bar -->
+                            <Grid Grid.Row="1" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock x:Name="CurrentTimeText"
+                                           Grid.Column="0"
+                                           Text="00:00"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,10,0"/>
+
+                                <Slider x:Name="ProgressSlider"
+                                        Grid.Column="1"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        Value="0"
+                                        VerticalAlignment="Center"
+                                        PreviewMouseDown="ProgressSlider_PreviewMouseDown"
+                                        PreviewMouseUp="ProgressSlider_PreviewMouseUp"
+                                        ValueChanged="ProgressSlider_ValueChanged"/>
+
+                                <TextBlock x:Name="TotalTimeText"
+                                           Grid.Column="2"
+                                           Text="00:00"
+                                           FontSize="11"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0"/>
+                            </Grid>
+
+                            <!-- Control Buttons -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left Controls -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
+                                    <Button x:Name="PreviousButton"
+                                            Width="36" Height="36"
+                                            Padding="0"
+                                            Margin="0,0,5,0"
+                                            Click="PreviousButton_Click"
+                                            ToolTip="Previous">
+                                        <Grid>
+                                            <ui:SymbolIcon Symbol="Previous24" FontSize="18"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button x:Name="PlayPauseButton"
+                                            Width="36" Height="36"
+                                            Padding="0"
+                                            Margin="0,0,5,0"
+                                            Click="PlayPauseButton_Click"
+                                            ToolTip="Play/Pause">
+                                        <Grid>
+                                            <ui:SymbolIcon x:Name="PlayPauseIcon" Symbol="Play24" FontSize="18"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button x:Name="StopButton"
+                                            Width="36" Height="36"
+                                            Padding="0"
+                                            Margin="0,0,5,0"
+                                            Click="StopButton_Click"
+                                            ToolTip="Stop">
+                                        <Grid>
+                                            <ui:SymbolIcon Symbol="Stop24" FontSize="18"/>
+                                        </Grid>
+                                    </Button>
+                                    <Button x:Name="NextButton"
+                                            Width="36" Height="36"
+                                            Padding="0"
+                                            Click="NextButton_Click"
+                                            ToolTip="Next">
+                                        <Grid>
+                                            <ui:SymbolIcon Symbol="Next24" FontSize="18"/>
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+
+                                <!-- Center Volume Control -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <ui:SymbolIcon Symbol="Speaker224" FontSize="16" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <Slider x:Name="VolumeSlider"
+                                            Width="100"
+                                            Minimum="0"
+                                            Maximum="100"
+                                            Value="50"
+                                            VerticalAlignment="Center"
+                                            ValueChanged="VolumeSlider_ValueChanged"
+                                            ToolTip="Volume"/>
+                                    <TextBlock x:Name="VolumeText"
+                                               Text="50%"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               Margin="10,0,0,0"
+                                               MinWidth="35"/>
+                                </StackPanel>
+
+                                <!-- Right Export Button -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="ExportButton"
+                                            Height="36"
+                                            Padding="15,0"
+                                            Click="ExportButton_Click"
+                                            ToolTip="Export Audio">
+                                        <StackPanel Orientation="Horizontal">
+                                            <ui:SymbolIcon Symbol="ArrowDownload24" FontSize="16" Margin="0,0,5,0"/>
+                                            <TextBlock Text="Export" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Export as WEM" Click="ExportAsWem_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="Export All as WEM" Click="ExportAllAsWem_Click"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Info Panel -->
+            <Border Grid.Column="1"
+                    Background="#252526"
+                    BorderBrush="#3F3F46"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="15">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Bank Information"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- File Name -->
+                        <TextBlock Text="File Name"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="FileNameText"
+                                   Text="bank.bnk"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Bank ID -->
+                        <TextBlock Text="Bank ID"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="BankIdText"
+                                   Text="0"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Version -->
+                        <TextBlock Text="Version"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="VersionText"
+                                   Text="0"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Language -->
+                        <TextBlock Text="Language"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="LanguageText"
+                                   Text="Unknown"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Audio Files Count -->
+                        <TextBlock Text="Audio Files"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="AudioCountText"
+                                   Text="0"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Total Size -->
+                        <TextBlock Text="Total Size"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="TotalSizeText"
+                                   Text="0 B"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- Project ID -->
+                        <TextBlock Text="Project ID"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="ProjectIdText"
+                                   Text="0"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- HIRC Objects -->
+                        <TextBlock Text="HIRC Objects"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="HircObjectsText"
+                                   Text="0"
+                                   FontSize="13"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- String Table Entries -->
+                        <TextBlock Text="String Table"
+                                   FontSize="11"
+                                   Foreground="#A0A0A0"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="StringTableText"
+                                   Text="0 entries"
+                                   FontSize="13"
+                                   Margin="0,0,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2"
+                Background="#007ACC"
+                Height="25"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,1,0,0">
+            <TextBlock x:Name="StatusText"
+                       Text="Ready"
+                       VerticalAlignment="Center"
+                       Margin="10,0"
+                       Foreground="White"
+                       FontSize="12"/>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

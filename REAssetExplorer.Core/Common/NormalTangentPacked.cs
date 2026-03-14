@@ -36,4 +36,14 @@ public class NormalTangentPacked
         return $"Normal: ({SNORM8(Nx):F3}, {SNORM8(Ny):F3}, {SNORM8(Nz):F3}, {SNORM8(Nw):F3}), " +
                $"Tangent: ({SNORM8(Tx):F3}, {SNORM8(Ty):F3}, {SNORM8(Tz):F3}, {SNORM8(Tw):F3})";
     }
+    
+    public System.Numerics.Vector3 GetNormal()
+    {
+        return new System.Numerics.Vector3(SNORM8(Nx), SNORM8(Ny), SNORM8(Nz));
+    }
+    
+    public System.Numerics.Vector4 GetTangent()
+    {
+        return new System.Numerics.Vector4(SNORM8(Tx), SNORM8(Ty), SNORM8(Tz), SNORM8(Tw));
+    }
 }

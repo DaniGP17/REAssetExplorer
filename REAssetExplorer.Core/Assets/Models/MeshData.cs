@@ -16,6 +16,8 @@ public class MeshData : AssetData
     public MeshBuffer MeshBuffer;
     public SkeletonLayout SkeletonLayout;
     public BoundingBoxLayout BoundingBoxLayout;
+    
+    public bool IsSkinning => Header.SkeletonOffset != 0;
 }
 
 public struct MeshHeader
@@ -90,7 +92,7 @@ public struct MeshPart
     public byte[] Reserved { get; set; } // 6 bytes
     public uint VertexCount { get; set; }
     public uint IndexCount { get; set; }
-    public MeshCluster[] Clusters { get; set; }
+    public MeshCluster[]? Clusters { get; set; }
 }
 
 public struct MeshCluster
@@ -105,12 +107,12 @@ public struct MeshCluster
     public int StreamingPlatformSpecificOffsetBytes { get; set; }
 
     //public Dictionary<VertexElementSlots, VertexData> Vertices;
-    public Vector3[] Positions;
-    public NormalTangentPacked[] Normals;
-    public UV[] UV0;
-    public UV[] UV1;
-    public BoneWeight[] BoneWeights;
-    public MeshIndex[] Indices; // Faces
+    public Vector3[]? Positions;
+    public NormalTangentPacked[]? Normals;
+    public UV[]? UV0;
+    public UV[]? UV1;
+    public BoneWeight[]? BoneWeights;
+    public MeshIndex[]? Indices; // Faces
 }
 
 public struct VertexData
@@ -134,7 +136,7 @@ public struct MeshBuffer
 
     public List<BufferElement> Elements;
     public byte[] VertexBuffer;
-    public MeshIndex[] IndexBuffer;
+    public byte[] IndexBuffer;
 }
 
 public struct SkeletonLayout
@@ -197,15 +199,15 @@ public struct VertexBuffer
 
 public struct BufferElement
 {
-    public UInt16 InputSlot;
+    public VertexElementSlots InputSlot;
     public UInt16 ByteStride;
     public uint ByteOffset;
 }
 
-public enum VertexElementSlots
+public enum VertexElementSlots : UInt16
 {
     Position = 0,
-    Normal = 1,
+    Normal = 1, // Tangents packed in
     Uv0 = 2,
     Uv1 = 3,
     Weights = 4,

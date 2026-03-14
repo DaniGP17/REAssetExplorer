@@ -36,7 +36,7 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
             ReadStrings(br, mesh);
             ReadMaterialNames(br, mesh);
             ReadBuffer(br, mesh);
-            ReadVertexData(br, mesh);
+            ReadVertexData(br, ref mesh);
             ReadSkeleton(br, mesh);
             ReadBoundingBoxes(br, mesh);
             ReadJointNames(br, mesh);
@@ -173,7 +173,7 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         cluster.IsQuad = br.ReadByte();
         cluster.Reserved = br.ReadBytes(2);
         cluster.IndexCount = br.ReadUInt32() / 3;
-        cluster.StartIndexLocation = br.ReadUInt32() / 3;
+        cluster.StartIndexLocation = br.ReadUInt32();
         cluster.BaseVertexLocation = br.ReadInt32();
         cluster.StreamingOffsetBytes = br.ReadInt32();
         cluster.StreamingPlatformSpecificOffsetBytes = br.ReadInt32();
@@ -219,7 +219,8 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         for (int i = 0; i < mesh.MeshLayout.TotalClusterCount; i++)
         {
             ushort nameIndex = br.ReadUInt16();
-            mesh.Materials.Add(nameIndex, mesh.Strings.ContainsKey(nameIndex) ? mesh.Strings[nameIndex] : "\0");
+            mesh.Materials.Add((byte)mesh.Materials.Count, mesh.Strings.ContainsKey(nameIndex) ? mesh.Strings[nameIndex] : "\0");
+            //mesh.Materials.Add((byte)nameIndex, mesh.Strings.ContainsKey(nameIndex) ? mesh.Strings[nameIndex] : "\0");
         }
     }
 
@@ -231,7 +232,11 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         mesh.MeshBuffer.ElementListOffset = br.ReadUInt64();
         mesh.MeshBuffer.VertexBufferOffset = br.ReadUInt64();
         mesh.MeshBuffer.IndexBufferOffset = br.ReadUInt64();
-        br.ReadUInt64(); // Offset to unk structure
+        Console.WriteLine(mesh.Header.Version);
+        if (mesh.Header.Version == 21041600) // RE7RT
+        {
+            br.ReadUInt64();
+        }
         mesh.MeshBuffer.VertexBufferSize = br.ReadUInt32();
         mesh.MeshBuffer.IndexBufferSize = br.ReadUInt32();
         mesh.MeshBuffer.ElementCount = br.ReadUInt16();
@@ -244,7 +249,7 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         for (int i = 0; i < mesh.MeshBuffer.TotalElementCount; i++)
         {
             var element = new BufferElement();
-            element.InputSlot = br.ReadUInt16();
+            element.InputSlot = (VertexElementSlots)br.ReadUInt16();
             element.ByteStride = br.ReadUInt16();
             element.ByteOffset = br.ReadUInt32();
             mesh.MeshBuffer.Elements.Add(element);
@@ -254,20 +259,10 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         mesh.MeshBuffer.VertexBuffer = br.ReadBytes((int)mesh.MeshBuffer.VertexBufferSize);
 
         br.BaseStream.Seek((long)mesh.MeshBuffer.IndexBufferOffset, SeekOrigin.Begin);
-        var indexBuffer = br.ReadBytes((int)mesh.MeshBuffer.IndexBufferSize);
-        mesh.MeshBuffer.IndexBuffer = new MeshIndex[indexBuffer.Length / 6];
-        for (int i = 0; i < mesh.MeshBuffer.IndexBuffer.Length; i++)
-        {
-            mesh.MeshBuffer.IndexBuffer[i] = new MeshIndex
-            {
-                A = BitConverter.ToUInt16(indexBuffer, i * 6 + 0),
-                B = BitConverter.ToUInt16(indexBuffer, i * 6 + 2),
-                C = BitConverter.ToUInt16(indexBuffer, i * 6 + 4),
-            };
-        }
+        mesh.MeshBuffer.IndexBuffer = br.ReadBytes((int)mesh.MeshBuffer.IndexBufferSize);
     }
 
-    protected virtual void ReadVertexData(BinaryReader br, MeshData mesh)
+    protected virtual void ReadVertexData(BinaryReader br, ref MeshData mesh)
     {
         int globalVertexCount = 0;
         
@@ -288,15 +283,23 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
                     int vertexCount = (k + 1 < part.Clusters.Length)
                         ? part.Clusters[k + 1].BaseVertexLocation - cluster.BaseVertexLocation
                         : (int)part.VertexCount - (cluster.BaseVertexLocation - globalVertexCount);
-
+                    
                     for (int l = 0; l < cluster.IndexCount; l++)
                     {
-                        MeshIndex index = mesh.MeshBuffer.IndexBuffer[cluster.StartIndexLocation + l];
-                        indices[l] = index;
+                        byte[] indexData = new byte[6];
+                        Array.Copy(mesh.MeshBuffer.IndexBuffer, (int)(cluster.StartIndexLocation * 2) + (l * 6), indexData, 0, 6);
+                        
+                        indices[l] = new MeshIndex
+                        {
+                            A = BitConverter.ToUInt16(indexData, 0),
+                            B = BitConverter.ToUInt16(indexData, 2),
+                            C = BitConverter.ToUInt16(indexData, 4),
+                        };;
                     }
+
                     part.Clusters[k].Indices = indices;
 
-                    ReadClusterVertices(mesh, cluster, vertexCount);
+                    ReadClusterVertices(mesh, ref part.Clusters[k], vertexCount);
                 }
 
                 globalVertexCount += (int)part.VertexCount;
@@ -304,7 +307,7 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
         }
     }
 
-    protected virtual void ReadClusterVertices(MeshData mesh, MeshCluster cluster, int vertexCount)
+    protected virtual void ReadClusterVertices(MeshData mesh, ref MeshCluster cluster, int vertexCount)
     {
         var vertexBuffer = mesh.MeshBuffer.VertexBuffer;
         var slotVertices = new HashSet<VertexElementSlots>();
@@ -331,11 +334,19 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
             slotVertices.Add((VertexElementSlots)element.InputSlot);
         }
 
-        cluster.Positions = positions;
-        cluster.Normals = normals;
-        cluster.UV0 = uv0;
-        cluster.UV1 = uv1;
-        cluster.BoneWeights = boneWeights;
+        cluster.Positions   = NullIfFirstNull(positions);
+        cluster.Normals     = NullIfFirstNull(normals);
+        cluster.UV0         = NullIfFirstNull(uv0);
+        cluster.UV1         = NullIfFirstNull(uv1);
+        cluster.BoneWeights = NullIfFirstNull(boneWeights);
+    }
+    
+    private static T[]? NullIfFirstNull<T>(T[]? array) where T : class
+    {
+        if (array == null || array.Length == 0 || array[0] == null)
+            return null;
+
+        return array;
     }
 
     protected virtual void ProcessVertexElement(BufferElement element, byte[] vertexData, int vertexCount,
@@ -367,7 +378,7 @@ public abstract class MeshReaderBase : IAssetReader<MeshData>
             case VertexElementSlots.Uv1:
                 for (int n = 0; n < vertexCount; n++)
                 {
-                    if (element.InputSlot == (ushort)VertexElementSlots.Uv0)
+                    if (element.InputSlot == VertexElementSlots.Uv0)
                     {
                         uv0[n] = new UV(BitConverter.ToInt32(vertexData, n * element.ByteStride));
                     }

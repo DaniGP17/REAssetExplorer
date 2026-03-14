@@ -30,7 +30,7 @@ public partial class MaterialViewerWindow : FluentWindow
     
     private bool _isLeftMouseDown = false;
     private bool _isRightMouseDown = false;
-    private Point _lastMousePosition;
+    private WpfPoint _lastMousePosition;
 
     public MaterialViewerWindow(MaterialData materialData, int materialIndex = 0)
     {
@@ -95,19 +95,26 @@ public partial class MaterialViewerWindow : FluentWindow
             _materialData.TextureHeaders[_materialIndex] != null)
         {
             _texturesList = new List<TextureInfo>();
-            foreach (var tex in _materialData.TextureHeaders[_materialIndex])
+            int idx = 0;
+            foreach (var texHeader in _materialData.TextureHeaders)
             {
-                var textureInfo = new TextureInfo
+                foreach (var tex in texHeader)
                 {
-                    Type = tex.TextureType,
-                    Path = tex.TextureFilePath
-                };
+                    var textureInfo = new TextureInfo
+                    {
+                        Type = tex.TextureType + "#" + idx,
+                        Path = tex.TextureFilePath
+                    };
                 
-                // Try to load texture preview asynchronously
-                LoadTexturePreview(textureInfo, tex.TextureFilePath);
+                    // Try to load texture preview asynchronously
+                    LoadTexturePreview(textureInfo, tex.TextureFilePath);
                 
-                _texturesList.Add(textureInfo);
+                    _texturesList.Add(textureInfo);
+                }
+
+                idx++;
             }
+            
             TexturesListBox.ItemsSource = _texturesList;
         }
 
@@ -640,7 +647,7 @@ public partial class MaterialViewerWindow : FluentWindow
         if (!_isLeftMouseDown && !_isRightMouseDown)
             return;
 
-        Point currentPosition = e.GetPosition(RenderBorder);
+        WpfPoint currentPosition = e.GetPosition(RenderBorder);
         double deltaX = currentPosition.X - _lastMousePosition.X;
         double deltaY = currentPosition.Y - _lastMousePosition.Y;
         _lastMousePosition = currentPosition;

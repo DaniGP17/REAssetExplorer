@@ -131,20 +131,40 @@ public static class BinaryReaderExtensions
     /// <param name="reader">The BinaryReader instance.</param>
     /// <param name="encoding">The encoding to use (default is UTF-8).</param>
     /// <returns>The string read from the stream.</returns>
-    public static string ReadNullTerminatedString(this BinaryReader reader, System.Text.Encoding? encoding = null)
+    public static string ReadNullTerminatedString(
+        this BinaryReader reader,
+        long? position = null,
+        System.Text.Encoding? encoding = null)
     {
         encoding ??= System.Text.Encoding.UTF8;
+
+        var stream = reader.BaseStream;
+        long originalPosition = stream.Position;
+
+        if (position.HasValue)
+        {
+            stream.Seek(position.Value, SeekOrigin.Begin);
+        }
+
         var bytes = new List<byte>();
 
         while (true)
         {
-            var b = reader.ReadByte();
+            byte b = reader.ReadByte();
             if (b == 0)
                 break;
+
             bytes.Add(b);
         }
 
-        return encoding.GetString(bytes.ToArray());
+        string result = encoding.GetString(bytes.ToArray());
+
+        if (position.HasValue)
+        {
+            stream.Seek(originalPosition, SeekOrigin.Begin);
+        }
+
+        return result;
     }
 
     /// <summary>

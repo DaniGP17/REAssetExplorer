@@ -16,4 +16,7 @@ public class UV
 
     public override string ToString()
         => $"U={U}, V={V}";
+    
+    public System.Numerics.Vector2 ToNumerics()
+        => new System.Numerics.Vector2(U, V);
 }

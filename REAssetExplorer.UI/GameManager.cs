@@ -1,3 +1,4 @@
+using REAssetExplorer.Core.Common;
 using REAssetExplorer.Core.Games;
 using Microsoft.Extensions.DependencyInjection;
 using REAssetExplorer.App.Views;
@@ -16,6 +17,7 @@ public static class GameManager
     private static StatusWindow? _statusWindow;
     private static Dictionary<string, PakFile> _loadedPakFiles = new();
     private static IGameProvider? _currentGameProvider;
+    private static PakLoader? _pakLoader;
     
     /// <summary>
     /// Gets the currently loaded game provider.
@@ -26,6 +28,23 @@ public static class GameManager
     /// Gets the loaded PAK files.
     /// </summary>
     public static IReadOnlyDictionary<string, PakFile> LoadedPakFiles => _loadedPakFiles;
+    
+    /// <summary>
+    /// Gets the materials cache.
+    /// </summary>
+    public static MaterialsCache? MaterialsCache => _pakLoader?.GetMaterialsCache();
+    
+    /// <summary>
+    /// Tries to get the file path for a material by name.
+    /// </summary>
+    /// <param name="materialName">The name of the material.</param>
+    /// <param name="path">The file path if found.</param>
+    /// <returns>True if the material was found, false otherwise.</returns>
+    public static bool TryGetMaterialPath(string materialName, out string? path)
+    {
+        path = null;
+        return _pakLoader?.TryGetMaterialPath(materialName, out path) ?? false;
+    }
 
     /// <summary>
     /// Loads a game and displays its file explorer.
@@ -69,9 +88,15 @@ public static class GameManager
         }
 
         _loadedPakFiles = pakFiles;
+        
+        // Store the PakLoader reference to access materials cache
+        _pakLoader = loadingService.PakLoader;
 
         // Build tree structure
         BuildFileTree();
+
+        // Load game resources
+        await LoadGameResourcesAsync();
 
         // Show file explorer
         ShowFileExplorer();
@@ -94,6 +119,22 @@ public static class GameManager
     {
         var fileExplorer = new FileExplorer();
         fileExplorer.Show();
+    }
+    
+    private static async Task LoadGameResourcesAsync()
+    {
+        var loaderRegistry = App.Services.GetRequiredService<GameResourceLoaderRegistry>();
+        
+        if (_currentGameProvider == null)
+        {
+            return;
+        }
+        
+        var success = await ExecuteWithStatus(
+            StatusType.Loading,
+            "Loading game resources...",
+            () => loaderRegistry.LoadAllAsync(_currentGameProvider, UpdateStatus)
+        );
     }
 
     private static async Task<T?> ExecuteWithStatus<T>(

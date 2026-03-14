@@ -23,6 +23,6 @@ public class ReferenceEqualityConverter : IValueConverter
         var radio = parameter as FrameworkElement;
         var radioItem = radio?.DataContext;
 
-        return (bool)value ? radioItem : Binding.DoNothing;
+        return (bool)value ? radioItem : WpfBinding.DoNothing;
     }
 }

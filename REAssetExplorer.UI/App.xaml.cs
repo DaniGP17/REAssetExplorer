@@ -4,13 +4,14 @@ using System.Windows;
 using REAssetExplorer.UI.Local;
 using REAssetExplorer.UI.Remote;
 using System.Net.Http;
+using REAssetExplorer.UI.Services.Loaders;
 
 namespace REAssetExplorer.UI;
 
 /// <summary>
 /// Interaction logic for App.xaml
 /// </summary>
-public partial class App : Application
+public partial class App : WpfApplication
 {
     public static IServiceProvider Services { get; private set; } = null!;
 
@@ -20,6 +21,7 @@ public partial class App : Application
         
         ConfigureServices();
         RegisterGameProviders();
+        RegisterResourceLoaders();
     }
 
     private void ConfigureServices()
@@ -35,6 +37,8 @@ public partial class App : Application
         
         // Application services
         services.AddSingleton<Services.GameLoadingService>();
+        services.AddSingleton<Services.CacheService>();
+        services.AddSingleton<Services.GameResourceLoaderRegistry>();
         
         Services = services.BuildServiceProvider();
     }
@@ -43,4 +47,12 @@ public partial class App : Application
     {
         GameProviderRegistry.AutoRegisterProviders();
     }
+
+    private static void RegisterResourceLoaders()
+    {
+        var registry = Services.GetRequiredService<Services.GameResourceLoaderRegistry>();
+        
+        registry.Register(new MaterialsResourceLoader());
+    }
 }
+

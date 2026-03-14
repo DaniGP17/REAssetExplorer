@@ -36,7 +36,7 @@ public partial class SelectGame : FluentWindow, INotifyPropertyChanged
 
     private void GameRadioButton_Checked(object sender, RoutedEventArgs e)
     {
-        if (sender is not RadioButton { Tag: IGameProvider game })
+        if (sender is not WpfRadioButton { Tag: IGameProvider game })
         {
             return;
         }

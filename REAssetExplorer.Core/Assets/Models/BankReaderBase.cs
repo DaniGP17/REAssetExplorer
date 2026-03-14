@@ -196,4 +196,6 @@ public abstract class BankReaderBase : IAssetReader<BankData>
         if (read != chunk.Size)
             br.BaseStream.Seek(start + chunk.Size, SeekOrigin.Begin);
     }
+
+    public bool ResolveDependencies(BankData asset) => true;
 }

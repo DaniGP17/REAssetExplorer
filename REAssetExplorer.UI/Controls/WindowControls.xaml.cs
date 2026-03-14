@@ -7,7 +7,7 @@ namespace REAssetExplorer.App.Controls;
 /// <summary>
 /// User control for custom window title bar controls.
 /// </summary>
-public partial class WindowControls : UserControl
+public partial class WindowControls : WpfUserControl
 {
     public static readonly DependencyProperty CanMaximizeProperty =
         DependencyProperty.Register(

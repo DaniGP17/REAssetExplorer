@@ -283,4 +283,6 @@ public abstract class AIMapReaderBase : IAssetReader<AIMapData>
 
         throw new NotSupportedException($"Unknown ContentGroup '{typeName}', cannot skip safely.");
     }
+    
+    public bool ResolveDependencies(AIMapData asset) => true;
 }

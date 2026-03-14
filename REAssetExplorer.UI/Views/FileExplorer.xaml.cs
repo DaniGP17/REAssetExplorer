@@ -310,7 +310,7 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         }
     }
     
-    private void PathTextBox_KeyDown(object sender, KeyEventArgs e)
+    private void PathTextBox_KeyDown(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
@@ -458,12 +458,19 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         // Try to get appropriate reader based on file extension
         var textureReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.TextureData>(selectedFile.Name);
         var materialReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.MaterialData>(selectedFile.Name);
-        var audioBankReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.AudioBankData>(selectedFile.Name);
+        var audioBankReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.BankData>(selectedFile.Name);
+        var meshReader = assetRegistry.GetReader<REAssetExplorer.Core.Assets.Models.MeshData>(selectedFile.Name);
         
         if (textureReader != null)
         {
             var textureViewer = new TextureViewerWindow(selectedFile.Name, pakEntry);
             textureViewer.Show();
+        }
+        else if (meshReader != null)
+        {
+            // Open Mesh Viewer
+            var meshViewer = new MeshViewerWindow(selectedFile.Name, pakEntry);
+            meshViewer.Show();
         }
         else if (materialReader != null)
         {
@@ -503,15 +510,9 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         }
         else if (audioBankReader != null)
         {
-            var pakFile = FindPakFileForEntry(pakEntry.Value);
-            if (pakFile == null)
-            {
-                var errorWindow = new StatusWindow(StatusType.Error, "PAK file not found for this material.");
-                errorWindow.ShowDialog();
-                return;
-            }
-            byte[] bnkData = gameProvider.PakReader.ExtractFile(pakFile, pakEntry.Value);
-            audioBankReader.Read(bnkData, selectedFile.Name);
+            // Open Bank Viewer Window
+            var bankViewer = new BankViewerWindow(selectedFile.Name, pakEntry);
+            bankViewer.Show();
         }
         else
         {
@@ -692,7 +693,7 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
         
         try
         {
-            Clipboard.SetText(selectedFile.Name);
+            WpfClipboard.SetText(selectedFile.Name);
         }
         catch (Exception ex)
         {
@@ -800,7 +801,7 @@ public partial class FileExplorer : FluentWindow, INotifyPropertyChanged
     }
     
     // Search functionality
-    private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+    private void SearchTextBox_KeyDown(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Enter && sender is System.Windows.Controls.TextBox textBox)
         {

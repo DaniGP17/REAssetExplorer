@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.5.0" />
+    <PackageReference Include="Vortice.Direct3D12" Version="3.5.0" />
+    <PackageReference Include="Vortice.DXGI" Version="3.5.0" />
+    <PackageReference Include="Vortice.Mathematics" Version="1.7.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\" />
+    <Folder Include="Light\" />
+    <Folder Include="Pipeline\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Shaders\*.hlsl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClCompile Include="Shaders\Env_1Layer_Common_DirtPS.hlsl" />
+    <ClCompile Include="Shaders\Env_1Layer_Common_Dirt_DecalBlend.hlsl" />
+    <ClCompile Include="Shaders\Env_1Layer_DirtPS.hlsl" />
+    <ClCompile Include="Shaders\Env_2Layer_Common_DirtPS.hlsl" />
+    <ClCompile Include="Shaders\Env_2Layer_DirtPS.hlsl" />
+    <ClCompile Include="Shaders\Env_3Layer_Common_DirtPS.hlsl" />
+    <ClCompile Include="Shaders\Env_3Layer_DirtPS.hlsl" />
+  </ItemGroup>
+
+</Project>
