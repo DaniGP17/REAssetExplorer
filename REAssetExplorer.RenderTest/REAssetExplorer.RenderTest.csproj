@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Rendering\REAssetExplorer.Rendering.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Testing\REAssetExplorer.Testing.csproj" />
+  </ItemGroup>
+
+  <!-- Copiar shaders compilados a la carpeta de salida -->
+  <Target Name="CopyCompiledShaders" AfterTargets="Build">
+    <ItemGroup>
+      <!-- Buscar los shaders en x64/Debug o x64/Release -->
+      <CompiledShaders Include="..\REAssetExplorer.Shaders\x64\$(Configuration)\*.cso" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutDir)Shaders" />
+    <Copy SourceFiles="@(CompiledShaders)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" />
+    
+    <!-- Copiar SimpleVS.cso como DefaultVS.cso -->
+    <Copy 
+      SourceFiles="..\REAssetExplorer.Shaders\x64\$(Configuration)\SimpleVS.cso" 
+      DestinationFiles="$(OutDir)Shaders\DefaultVS.cso" 
+      SkipUnchangedFiles="true" 
+      Condition="Exists('..\REAssetExplorer.Shaders\x64\$(Configuration)\SimpleVS.cso')" />
+    
+    <!-- Copiar DefaultPS.cso (ya está compilado con el nombre correcto) -->
+    
+    <Message Text="Copied @(CompiledShaders->Count()) compiled shaders to $(OutDir)Shaders" Importance="high" />
+  </Target>
+
+</Project>

@@ -1,5 +1,4 @@
 using REAssetExplorer.Core.Assets.Models;
-using REAssetExplorer.Core.Common;
 
 namespace REAssetExplorer.Core.Assets.Resolvers;
 
@@ -27,28 +26,12 @@ public class MeshDependencyResolver : IDependencyResolver
                 
                 var dependency = new AssetDependency(
                     AssetType.Material,
-                    filePath: "", // Will be resolved
+                    filePath: "",
                     name: materialName,
                     isRequired: true,
                     purpose: "Material"
-                )
-                {
-                    Metadata = new Dictionary<string, object>
-                    {
-                        ["MaterialName"] = materialName,
-                        ["NeedsPathResolution"] = true
-                    }
-                };
-                
-                // Try to resolve path immediately if we have a materials cache
-                if (context.MaterialsCache != null 
-                    && context.MaterialsCache.TryGetMaterial(materialName, out var materialPath)
-                    && !string.IsNullOrEmpty(materialPath))
-                {
-                    dependency.FilePath = materialPath;
-                    dependency.Metadata["NeedsPathResolution"] = false;
-                }
-                
+                );
+
                 meshData.Dependencies.Add(dependency);
             }
             

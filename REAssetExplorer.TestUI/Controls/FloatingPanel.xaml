@@ -1,0 +1,102 @@
+<UserControl x:Class="REAssetExplorer.TestUI.Controls.FloatingPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        El visual propio del panel se declara mediante property element explícito
+        para que el atributo [ContentProperty("PanelContent")] no lo intercepte.
+        Así UserControl.Content = Border (estructura interna) y PanelContent = el
+        contenido que viene de MainWindow.
+    -->
+    <UserControl.Content>
+        <Border Style="{StaticResource EditorPanelBorderStyle}">
+            <Grid>
+                <!-- Layout normal: cabecera horizontal + contenido -->
+                <DockPanel x:Name="MainLayout">
+                    <!-- Cabecera arrastrable -->
+                    <DockPanel DockPanel.Dock="Top" Height="29" Background="#1d1d1d"
+                               Cursor="SizeAll"
+                               MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                        <TextBlock Style="{StaticResource EditorPanelHeaderTextStyle}"
+                                   Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <TextBlock Text="{Binding Subtitle, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   Foreground="#a9a9a9" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Image Style="{StaticResource EditorPanelHeaderIconStyle}"
+                               Source="pack://application:,,,/Assets/img/close.png"
+                               DockPanel.Dock="Right"
+                               MouseLeftButtonDown="Close_MouseLeftButtonDown"/>
+                        <Image Style="{StaticResource EditorPanelHeaderIconStyle}"
+                               Source="pack://application:,,,/Assets/img/rewind.png"
+                               DockPanel.Dock="Right"
+                               RenderTransformOrigin="0.5,0.5"
+                               MouseLeftButtonDown="Compact_MouseLeftButtonDown">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="CompactIconRotation"/>
+                            </Image.RenderTransform>
+                        </Image>
+                        <Image Style="{StaticResource EditorPanelHeaderIconStyle}"
+                               Source="pack://application:,,,/Assets/img/help.png"
+                               DockPanel.Dock="Right" Width="8"/>
+                    </DockPanel>
+
+                    <!-- Separador (oculto en modo compacto) -->
+                    <Border x:Name="HeaderSeparator"
+                            DockPanel.Dock="Top"
+                            Style="{StaticResource HierarchySeparatorStyle}"/>
+
+                    <!-- Contenido externo del panel -->
+                    <ContentPresenter x:Name="ContentArea"
+                                      Content="{Binding PanelContent, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                </DockPanel>
+
+                <!-- Tira vertical (visible solo cuando IsCompact=true AND IsCompactSide=true) -->
+                <Grid x:Name="SideStrip" Visibility="Collapsed" Background="#1d1d1d"
+                      Cursor="SizeAll"
+                      MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                    <DockPanel>
+                        <!-- Botones apilados en la parte superior -->
+                        <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,6,0,0">
+                            <Image Style="{StaticResource EditorPanelHeaderIconStyle}"
+                                   Source="pack://application:,,,/Assets/img/close.png"
+                                   Margin="0,0,0,6"
+                                   MouseLeftButtonDown="Close_MouseLeftButtonDown"/>
+                            <Image Style="{StaticResource EditorPanelHeaderIconStyle}"
+                                   Source="pack://application:,,,/Assets/img/rewind.png"
+                                   RenderTransformOrigin="0.5,0.5"
+                                   MouseLeftButtonDown="Compact_MouseLeftButtonDown">
+                                <Image.RenderTransform>
+                                    <RotateTransform x:Name="SideCompactIconRotation"/>
+                                </Image.RenderTransform>
+                            </Image>
+                        </StackPanel>
+
+                        <!-- Título rotado 90° -->
+                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   Style="{StaticResource EditorPanelHeaderTextStyle}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Margin="0">
+                            <TextBlock.LayoutTransform>
+                                <RotateTransform Angle="-90"/>
+                            </TextBlock.LayoutTransform>
+                        </TextBlock>
+                    </DockPanel>
+                </Grid>
+
+                <!-- Thumb de resize (oculto en modo compacto) -->
+                <Thumb x:Name="ResizeThumb"
+                       HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                       Style="{StaticResource ResizeThumbStyle}"
+                       DragDelta="Thumb_DragDelta"/>
+            </Grid>
+        </Border>
+    </UserControl.Content>
+</UserControl>

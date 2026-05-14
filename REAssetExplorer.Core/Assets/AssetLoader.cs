@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using REAssetExplorer.Core.Assets.Models;
 using REAssetExplorer.Core.Common;
 using REAssetExplorer.Core.Games;
@@ -12,14 +13,21 @@ public class AssetLoader : IAssetLoader
 {
     private readonly IGameProvider _gameProvider;
     private readonly Dictionary<string, PakFile> _pakFiles;
-    private readonly MaterialsCache? _materialsCache;
-    private readonly Dictionary<string, AssetData> _loadedAssets = new(StringComparer.Ordinal);
     private readonly DependencyResolverRegistry _resolverRegistry;
     private readonly Dictionary<string, PakEntryReference> _entryByNormalizedPath = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, PakEntryReference> _entryByTrimmedPath = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, List<PakEntryReference>> _entriesByTrimmedFileName = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, PakEntryReference?> _resolvedEntryCache = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _bestVariantPathCache = new(StringComparer.Ordinal);
+
+    // Thread-safe asset cache
+    private readonly ConcurrentDictionary<string, AssetData> _loadedAssets = new(StringComparer.Ordinal);
+
+    // Per-path signals: guarantees each asset is loaded exactly once across threads.
+    // A thread that loses the race waits on the winner's signal rather than loading a duplicate.
+    private readonly ConcurrentDictionary<string, ManualResetEventSlim> _loadSignals = new(StringComparer.Ordinal);
+
+    // Guards against processing the same asset's dependency graph more than once.
+    private readonly ConcurrentDictionary<string, byte> _dependenciesLoaded = new(StringComparer.Ordinal);
+
+    // Cached once; passed to every DependencyLoadContext to avoid repeated allocations.
+    private readonly DependencyLoadContext _sharedLoadContext;
 
     private readonly struct PakEntryReference
     {
@@ -33,23 +41,25 @@ public class AssetLoader : IAssetLoader
         public int EntryIndex { get; }
         public PakEntry Entry => PakFile.Entries[EntryIndex];
     }
-    
+
     public AssetLoader(
-        IGameProvider gameProvider, 
+        IGameProvider gameProvider,
         Dictionary<string, PakFile> pakFiles,
-        MaterialsCache? materialsCache = null,
         DependencyResolverRegistry? resolverRegistry = null)
     {
         _gameProvider = gameProvider ?? throw new ArgumentNullException(nameof(gameProvider));
         _pakFiles = pakFiles ?? throw new ArgumentNullException(nameof(pakFiles));
-        _materialsCache = materialsCache;
         _resolverRegistry = resolverRegistry ?? CreateDefaultResolverRegistry();
-        BuildLookupIndexes();
+
+        _sharedLoadContext = new DependencyLoadContext(this)
+        {
+            PakFiles = _pakFiles.Values.ToList(),
+            GameProvider = _gameProvider
+        };
+
+        BuildLookupIndex();
     }
-    
-    /// <summary>
-    /// Creates a default resolver registry with standard resolvers.
-    /// </summary>
+
     private static DependencyResolverRegistry CreateDefaultResolverRegistry()
     {
         var registry = new DependencyResolverRegistry();
@@ -57,205 +67,198 @@ public class AssetLoader : IAssetLoader
             new Resolvers.MeshDependencyResolver(),
             new Resolvers.MaterialDependencyResolver(),
             new Resolvers.TextureDependencyResolver(),
-            new Resolvers.SdfDependencyResolver()
+            new Resolvers.SdfDependencyResolver(),
+            new Resolvers.SceneDependencyResolver()
         );
         return registry;
     }
-    
-    /// <summary>
-    /// Gets the resolver registry to allow registering custom resolvers.
-    /// </summary>
+
     public DependencyResolverRegistry ResolverRegistry => _resolverRegistry;
-    
+
     /// <inheritdoc/>
     public IGameProvider GameProvider => _gameProvider;
-    
+
     /// <summary>
     /// Loads an asset and optionally its dependencies.
+    /// Thread-safe: concurrent calls for the same path will coalesce — only one load happens,
+    /// other callers wait for it to finish.
     /// </summary>
-    /// <typeparam name="T">The type of asset to load.</typeparam>
-    /// <param name="filePath">The path to the asset within the PAK files.</param>
-    /// <param name="loadDependencies">Whether to also load dependencies.</param>
-    /// <param name="onProgress">Optional callback for progress updates.</param>
-    /// <returns>Result containing the loaded asset or an error.</returns>
     public Result<T> LoadAsset<T>(
-        string filePath, 
+        string filePath,
         bool loadDependencies = true,
         Action<string>? onProgress = null) where T : AssetData
     {
+        filePath = _gameProvider.FilesPath + filePath;
         var normalizedPath = NormalizePath(filePath);
         onProgress?.Invoke($"Loading {normalizedPath}...");
-        
-        // Check if already loaded
+
+        // Fast path: already fully loaded.
         if (_loadedAssets.TryGetValue(normalizedPath, out var cached) && cached is T cachedTyped)
         {
             onProgress?.Invoke($"Using cached {normalizedPath}");
             return Result<T>.Success(cachedTyped);
         }
-        
-        // Find the asset in PAK files
-        var (pakFile, entry) = FindAssetEntry(normalizedPath);
-        if (pakFile == null || entry == null)
+
+        // Try to become the loading thread for this path.
+        var ourSignal = new ManualResetEventSlim(false);
+        var signal = _loadSignals.GetOrAdd(normalizedPath, ourSignal);
+        bool isLeader = ReferenceEquals(signal, ourSignal);
+
+        if (!isLeader)
         {
-            onProgress?.Invoke($"Asset not found in PAK: {normalizedPath}");
-            return Result<T>.Failure($"Asset not found: {normalizedPath}");
+            // Another thread owns the load — wait for it to finish.
+            signal.Wait();
+            if (_loadedAssets.TryGetValue(normalizedPath, out cached) && cached is T waited)
+                return Result<T>.Success(waited);
+            return Result<T>.Failure($"Asset failed to load (concurrent): {normalizedPath}");
         }
 
-        var resolvedPath = NormalizePath(entry.Value.FilePath);
-        if (_loadedAssets.TryGetValue(resolvedPath, out var resolvedCached) && resolvedCached is T resolvedTyped)
-        {
-            _loadedAssets[normalizedPath] = resolvedTyped;
-            onProgress?.Invoke($"Using cached {resolvedPath}");
-            return Result<T>.Success(resolvedTyped);
-        }
-        
-        // Extract and read the asset
+        // We are the loading thread.
         try
         {
-            var data = _gameProvider.PakReader.ExtractFile(pakFile, entry.Value);
-            var reader = _gameProvider.AssetReaders.GetReader<T>(resolvedPath);
-            
+            if (!_entryByNormalizedPath.TryGetValue(normalizedPath, out var entryRef))
+            {
+                Console.WriteLine("Asset not found: " + normalizedPath);
+                onProgress?.Invoke($"Asset not found in PAK: {normalizedPath}");
+                return Result<T>.Failure($"Asset not found: {normalizedPath}");
+            }
+
+            var data = _gameProvider.PakReader.ExtractFile(entryRef.PakFile, entryRef.Entry);
+            var reader = _gameProvider.AssetReaders.GetReader<T>(normalizedPath);
+
             if (reader == null)
-            {
-                return Result<T>.Failure($"No reader found for: {resolvedPath}");
-            }
-            
-            var result = reader.Read(data, resolvedPath);
-            
+                return Result<T>.Failure($"No reader found for: {normalizedPath}");
+
+            var result = reader.Read(data, normalizedPath);
             if (result.IsFailure)
-            {
                 return Result<T>.Failure(result.Error!);
-            }
-            
+
             var asset = result.Value!;
-            
-            // Set basic properties if not already set
+
             if (string.IsNullOrEmpty(asset.Name))
-            {
-                asset.Name = System.IO.Path.GetFileNameWithoutExtension(resolvedPath);
-            }
+                asset.Name = System.IO.Path.GetFileNameWithoutExtension(normalizedPath);
             if (string.IsNullOrEmpty(asset.FilePath))
-            {
-                asset.FilePath = resolvedPath;
-            }
+                asset.FilePath = normalizedPath;
             if (string.IsNullOrEmpty(asset.Extension))
-            {
-                asset.Extension = System.IO.Path.GetExtension(resolvedPath);
-            }
-            
-            // Resolve dependencies using the appropriate resolver
+                asset.Extension = System.IO.Path.GetExtension(normalizedPath);
+
             var assetType = GetAssetType<T>();
             var resolver = _resolverRegistry.GetResolver(assetType);
-            
             if (resolver != null)
             {
-                var resolutionContext = new DependencyResolutionContext
-                {
-                    MaterialsCache = _materialsCache
-                };
-                
-                resolver.ResolveDependencies(asset, resolutionContext);
-                
+                resolver.ResolveDependencies(asset, new DependencyResolutionContext());
+
                 if (asset.Dependencies.Count > 0)
-                {
-                    onProgress?.Invoke($"Resolved {asset.Dependencies.Count} dependencies for {resolvedPath}");
-                }
+                    onProgress?.Invoke($"Resolved {asset.Dependencies.Count} dependencies for {normalizedPath}");
             }
-            
-            // Cache the asset
+
+            // Store before loading deps so cycle-detection in LoadDependencies can find it.
             _loadedAssets[normalizedPath] = asset;
-            _loadedAssets[resolvedPath] = asset;
-            
-            // Load dependencies if requested
+
             if (loadDependencies && asset.Dependencies.Count > 0)
             {
-                onProgress?.Invoke($"Loading {asset.Dependencies.Count} dependencies for {resolvedPath}...");
+                onProgress?.Invoke($"Loading {asset.Dependencies.Count} dependencies for {normalizedPath}...");
                 LoadDependencies(asset, onProgress);
             }
-            
+
+            if (loadDependencies && asset is SceneData sceneToMerge)
+                sceneToMerge.MergeExternalHierarchies();
+
             return Result<T>.Success(asset);
         }
         catch (Exception ex)
         {
-            return Result<T>.Failure($"Error loading {resolvedPath}: {ex.Message}");
+            // Remove signal so a future call can retry.
+            _loadSignals.TryRemove(normalizedPath, out _);
+            return Result<T>.Failure($"Error loading {normalizedPath}: {ex.Message}");
+        }
+        finally
+        {
+            // Always wake up waiters whether we succeeded or failed.
+            ourSignal.Set();
         }
     }
-    
+
     /// <summary>
-    /// Loads all dependencies of an asset.
+    /// Loads all dependencies of an asset in parallel.
     /// </summary>
-    /// <param name="asset">The asset whose dependencies to load.</param>
-    /// <param name="onProgress">Optional callback for progress updates.</param>
     public void LoadDependencies(AssetData asset, Action<string>? onProgress = null)
     {
+        var assetKey = NormalizePath(asset.FilePath ?? "");
+        if (!string.IsNullOrEmpty(assetKey) && !_dependenciesLoaded.TryAdd(assetKey, 0))
+            return;
+
         var assetType = GetAssetTypeFromData(asset);
         var resolver = _resolverRegistry.GetResolver(assetType);
-        
         if (resolver == null)
         {
             Console.WriteLine($"No resolver found for asset type: {assetType}");
             return;
         }
-        
-        var loadContext = new DependencyLoadContext(this)
+
+        foreach (var dep in asset.Dependencies)
         {
-            MaterialsCache = _materialsCache,
-            PakFiles = _pakFiles.Values.ToList(),
-            GameProvider = _gameProvider
-        };
-        
-        foreach (var dependency in asset.Dependencies)
+            dep.FilePath = NormalizePath(dep.FilePath);
+
+            // Here we could add a option to disable loading streaming textures
+            if (dep.AssetType == AssetType.Texture)
+            {
+                var streamingDepPath = "streaming/" + dep.FilePath;
+                var fullStreamingKey = NormalizePath(_gameProvider.FilesPath + streamingDepPath);
+                if (_entryByNormalizedPath.ContainsKey(fullStreamingKey))
+                    dep.FilePath = streamingDepPath;
+            }
+        }
+
+        Parallel.ForEach(asset.Dependencies, dependency =>
         {
-            dependency.FilePath = NormalizePath(dependency.FilePath);
             if (string.IsNullOrEmpty(dependency.FilePath))
             {
                 onProgress?.Invoke($"Skipping dependency '{dependency.Name}': path not resolved");
-                continue;
+                return;
             }
-            
-            // Skip if already loaded
-            if (_loadedAssets.ContainsKey(dependency.FilePath))
+
+            if (_loadedAssets.TryGetValue(dependency.FilePath, out var cached))
             {
-                asset.ResolvedDependencies[dependency.FilePath] = _loadedAssets[dependency.FilePath];
-                continue;
+                StoreResolvedDependency(asset, dependency.FilePath, cached);
+                if (cached.Dependencies.Count > 0)
+                    LoadDependencies(cached, onProgress);
+                return;
             }
-            
+
             onProgress?.Invoke($"Loading dependency: {dependency.FilePath} ({dependency.Purpose})");
-            
+
             try
             {
-                var loadedDependency = resolver.LoadDependency(dependency, loadContext, onProgress);
-                
-                if (loadedDependency == null)
+                var loaded = resolver.LoadDependency(dependency, _sharedLoadContext, onProgress);
+                if (loaded == null)
                 {
                     if (dependency.IsRequired)
-                    {
                         Console.WriteLine($"Failed to load REQUIRED dependency: {dependency.FilePath}");
-                    }
                 }
                 else
                 {
-                    // Store the resolved dependency in the parent asset
-                    asset.ResolvedDependencies[dependency.FilePath] = loadedDependency;
+                    StoreResolvedDependency(asset, dependency.FilePath, loaded);
+                    if (loaded.Dependencies.Count > 0)
+                        LoadDependencies(loaded, onProgress);
                 }
             }
             catch (Exception ex)
             {
                 if (dependency.IsRequired)
-                {
                     Console.WriteLine($"Failed to load required dependency {dependency.FilePath}: {ex.Message}");
-                }
                 else
-                {
                     Console.WriteLine($"Failed to load optional dependency {dependency.FilePath}: {ex.Message}");
-                }
             }
-        }
+        });
     }
-    
+
     /// <summary>
-    /// Gets the asset type for a generic type parameter.
+    /// Returns true if the given exact normalized path exists in the PAK index.
     /// </summary>
+    public bool EntryExists(string filePath) =>
+        _entryByNormalizedPath.ContainsKey(NormalizePath(filePath));
+
     private static AssetType GetAssetType<T>() where T : AssetData
     {
         return typeof(T).Name switch
@@ -263,13 +266,11 @@ public class AssetLoader : IAssetLoader
             nameof(MeshData) => AssetType.Mesh,
             nameof(MaterialData) => AssetType.Material,
             nameof(TextureData) => AssetType.Texture,
+            nameof(SceneData) => AssetType.Scene,
             _ => AssetType.Unknown
         };
     }
-    
-    /// <summary>
-    /// Gets the asset type from an asset data instance.
-    /// </summary>
+
     private static AssetType GetAssetTypeFromData(AssetData asset)
     {
         return asset switch
@@ -277,177 +278,41 @@ public class AssetLoader : IAssetLoader
             MeshData => AssetType.Mesh,
             MaterialData => AssetType.Material,
             TextureData => AssetType.Texture,
+            SceneData => AssetType.Scene,
             _ => AssetType.Unknown
         };
     }
-    
-    /// <summary>
-    /// Gets a loaded asset from the cache.
-    /// </summary>
-    /// <typeparam name="T">The type of asset to get.</typeparam>
-    /// <param name="filePath">The path to the asset.</param>
-    /// <returns>The cached asset, or null if not found or wrong type.</returns>
+
     public T? GetLoadedAsset<T>(string filePath) where T : AssetData
     {
         var normalizedPath = NormalizePath(filePath);
         if (_loadedAssets.TryGetValue(normalizedPath, out var asset) && asset is T typedAsset)
-        {
             return typedAsset;
-        }
         return null;
     }
-    
-    /// <summary>
-    /// Checks if an asset is already loaded.
-    /// </summary>
-    /// <param name="filePath">The path to the asset.</param>
-    /// <returns>True if the asset is loaded, false otherwise.</returns>
-    public bool IsAssetLoaded(string filePath)
-    {
-        return _loadedAssets.ContainsKey(NormalizePath(filePath));
-    }
-    
-    /// <summary>
-    /// Clears all loaded assets from the cache.
-    /// </summary>
+
+    public bool IsAssetLoaded(string filePath) =>
+        _loadedAssets.ContainsKey(NormalizePath(filePath));
+
     public void ClearCache()
     {
         _loadedAssets.Clear();
+        _dependenciesLoaded.Clear();
+        _loadSignals.Clear();
     }
-    
-    /// <summary>
-    /// Gets all loaded assets of a specific type.
-    /// </summary>
-    /// <typeparam name="T">The type of assets to get.</typeparam>
-    /// <returns>Collection of loaded assets of the specified type.</returns>
-    public IEnumerable<T> GetLoadedAssets<T>() where T : AssetData
+
+    public IEnumerable<T> GetLoadedAssets<T>() where T : AssetData =>
+        _loadedAssets.Values.OfType<T>();
+
+    private static void StoreResolvedDependency(AssetData asset, string filePath, AssetData loaded)
     {
-        return _loadedAssets.Values.OfType<T>();
+        asset.ResolvedDependencies[filePath] = loaded;
+        const string streamingPrefix = "streaming/";
+        if (filePath.StartsWith(streamingPrefix))
+            asset.ResolvedDependencies[filePath[streamingPrefix.Length..]] = loaded;
     }
 
-    /// <summary>
-    /// Finds the best available asset variant for a given logical path.
-    /// For textures this prefers streaming/high-resolution variants without rescanning all PAK entries.
-    /// </summary>
-    public string FindBestVariantPath(string filePath)
-    {
-        var normalizedPath = NormalizePath(filePath);
-        if (string.IsNullOrEmpty(normalizedPath))
-            return normalizedPath;
-
-        if (_bestVariantPathCache.TryGetValue(normalizedPath, out var cachedPath))
-            return cachedPath;
-
-        var trimmedPath = TrimNumericExtension(normalizedPath);
-        var trimmedFileName = Path.GetFileName(trimmedPath);
-        if (string.IsNullOrEmpty(trimmedFileName) ||
-            !_entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var candidates) ||
-            candidates.Count == 0)
-        {
-            _bestVariantPathCache[normalizedPath] = normalizedPath;
-            return normalizedPath;
-        }
-
-        var canonicalQueryPath = CanonicalizeVariantPath(trimmedPath);
-        PakEntryReference? bestCandidate = null;
-        int bestScore = int.MinValue;
-        long bestSize = long.MinValue;
-
-        foreach (var candidate in candidates)
-        {
-            var candidatePath = NormalizePath(candidate.Entry.FilePath);
-            var candidateTrimmedPath = TrimNumericExtension(candidatePath);
-            var candidateCanonicalPath = CanonicalizeVariantPath(candidateTrimmedPath);
-            int score = ScoreVariantCandidate(canonicalQueryPath, candidateCanonicalPath);
-            if (score == int.MinValue)
-                continue;
-
-            long size = candidate.Entry.UncompressedSize;
-            if (score > bestScore || (score == bestScore && size > bestSize))
-            {
-                bestCandidate = candidate;
-                bestScore = score;
-                bestSize = size;
-            }
-        }
-
-        var bestPath = bestCandidate.HasValue
-            ? NormalizePath(bestCandidate.Value.Entry.FilePath)
-            : normalizedPath;
-
-        _bestVariantPathCache[normalizedPath] = bestPath;
-        return bestPath;
-    }
-    
-    /// <summary>
-    /// Finds an asset entry in the PAK files.
-    /// Uses contains matching to handle paths with different prefixes and version suffixes.
-    /// </summary>
-    /// <param name="filePath">The path to search for.</param>
-    /// <returns>A tuple with the PAK file and entry, or (null, null) if not found.</returns>
-    private (PakFile? pakFile, PakEntry? entry) FindAssetEntry(string filePath)
-    {
-        var normalizedPath = NormalizePath(filePath);
-        if (string.IsNullOrEmpty(normalizedPath))
-            return (null, null);
-
-        if (_resolvedEntryCache.TryGetValue(normalizedPath, out var cachedResult))
-        {
-            return cachedResult.HasValue
-                ? (cachedResult.Value.PakFile, cachedResult.Value.Entry)
-                : (null, null);
-        }
-
-        if (_entryByNormalizedPath.TryGetValue(normalizedPath, out var exactMatch))
-        {
-            _resolvedEntryCache[normalizedPath] = exactMatch;
-            return (exactMatch.PakFile, exactMatch.Entry);
-        }
-
-        var trimmedPath = TrimNumericExtension(normalizedPath);
-        if (_entryByTrimmedPath.TryGetValue(trimmedPath, out var trimmedMatch))
-        {
-            _resolvedEntryCache[normalizedPath] = trimmedMatch;
-            return (trimmedMatch.PakFile, trimmedMatch.Entry);
-        }
-
-        var trimmedFileName = Path.GetFileName(trimmedPath);
-        if (!string.IsNullOrEmpty(trimmedFileName) &&
-            _entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var candidates))
-        {
-            PakEntryReference? bestCandidate = null;
-            int bestScore = int.MinValue;
-            long bestSize = long.MinValue;
-
-            foreach (var candidate in candidates)
-            {
-                var candidatePath = NormalizePath(candidate.Entry.FilePath);
-                var candidateTrimmedPath = TrimNumericExtension(candidatePath);
-                int score = ScoreLookupCandidate(normalizedPath, trimmedPath, candidatePath, candidateTrimmedPath);
-                if (score == int.MinValue)
-                    continue;
-
-                long size = candidate.Entry.UncompressedSize;
-                if (score > bestScore || (score == bestScore && size > bestSize))
-                {
-                    bestCandidate = candidate;
-                    bestScore = score;
-                    bestSize = size;
-                }
-            }
-
-            if (bestCandidate.HasValue)
-            {
-                _resolvedEntryCache[normalizedPath] = bestCandidate;
-                return (bestCandidate.Value.PakFile, bestCandidate.Value.Entry);
-            }
-        }
-
-        _resolvedEntryCache[normalizedPath] = null;
-        return (null, null);
-    }
-
-    private void BuildLookupIndexes()
+    private void BuildLookupIndex()
     {
         foreach (var pakFile in _pakFiles.Values)
         {
@@ -457,45 +322,11 @@ public class AssetLoader : IAssetLoader
                 if (string.IsNullOrWhiteSpace(entry.FilePath))
                     continue;
 
-                var entryRef = new PakEntryReference(pakFile, i);
                 var normalizedPath = NormalizePath(entry.FilePath);
-                var trimmedPath = TrimNumericExtension(normalizedPath);
-
-                AddOrReplaceBestEntry(_entryByNormalizedPath, normalizedPath, entryRef);
-                AddOrReplaceBestEntry(_entryByTrimmedPath, trimmedPath, entryRef);
-
-                var trimmedFileName = Path.GetFileName(trimmedPath);
-                if (!string.IsNullOrEmpty(trimmedFileName))
-                {
-                    if (!_entriesByTrimmedFileName.TryGetValue(trimmedFileName, out var entries))
-                    {
-                        entries = new List<PakEntryReference>();
-                        _entriesByTrimmedFileName[trimmedFileName] = entries;
-                    }
-
-                    entries.Add(entryRef);
-                }
+                if (!_entryByNormalizedPath.ContainsKey(normalizedPath))
+                    _entryByNormalizedPath[normalizedPath] = new PakEntryReference(pakFile, i);
             }
         }
-
-        foreach (var entries in _entriesByTrimmedFileName.Values)
-        {
-            entries.Sort((left, right) => right.Entry.UncompressedSize.CompareTo(left.Entry.UncompressedSize));
-        }
-    }
-
-    private static void AddOrReplaceBestEntry(
-        Dictionary<string, PakEntryReference> index,
-        string key,
-        PakEntryReference candidate)
-    {
-        if (string.IsNullOrEmpty(key))
-            return;
-
-        if (index.TryGetValue(key, out var current) && current.Entry.UncompressedSize >= candidate.Entry.UncompressedSize)
-            return;
-
-        index[key] = candidate;
     }
 
     private static string NormalizePath(string? filePath)
@@ -503,107 +334,23 @@ public class AssetLoader : IAssetLoader
         if (string.IsNullOrWhiteSpace(filePath))
             return string.Empty;
 
-        return filePath.Replace('\\', '/').ToLowerInvariant();
-    }
+        string normalized = filePath.Replace('\\', '/').ToLowerInvariant();
 
-    private static string TrimNumericExtension(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return path;
+        int lastDot = normalized.LastIndexOf('.');
+        if (lastDot == -1)
+            return normalized;
 
-        int slashIndex = path.LastIndexOf('/');
-        int dotIndex = path.LastIndexOf('.');
-        if (dotIndex <= slashIndex || dotIndex < 0)
-            return path;
-
-        for (int i = dotIndex + 1; i < path.Length; i++)
+        for (int i = lastDot + 1; i < normalized.Length; i++)
         {
-            if (!char.IsDigit(path[i]))
-                return path;
+            char c = normalized[i];
+            if (c < '0' || c > '9')
+                return normalized;
         }
 
-        return path[..dotIndex];
-    }
+        int secondLastDot = normalized.LastIndexOf('.', lastDot - 1);
+        if (secondLastDot == -1)
+            return normalized;
 
-    private static string CanonicalizeVariantPath(string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return path;
-
-        return path.Replace("/streaming/", "/", StringComparison.Ordinal);
-    }
-
-    private static int ScoreLookupCandidate(
-        string normalizedQueryPath,
-        string trimmedQueryPath,
-        string candidatePath,
-        string candidateTrimmedPath)
-    {
-        if (candidatePath.Equals(normalizedQueryPath, StringComparison.Ordinal))
-            return 5000;
-
-        if (candidateTrimmedPath.Equals(trimmedQueryPath, StringComparison.Ordinal))
-            return 4500;
-
-        if (candidateTrimmedPath.EndsWith(trimmedQueryPath, StringComparison.Ordinal))
-            return 4000 + CountSharedPathSuffixSegments(trimmedQueryPath, candidateTrimmedPath);
-
-        if (candidatePath.EndsWith(normalizedQueryPath, StringComparison.Ordinal))
-            return 3500 + CountSharedPathSuffixSegments(normalizedQueryPath, candidatePath);
-
-        if (candidatePath.Contains(normalizedQueryPath, StringComparison.Ordinal))
-            return 3000 + CountSharedPathSuffixSegments(trimmedQueryPath, candidateTrimmedPath);
-
-        var queryFileName = Path.GetFileName(trimmedQueryPath);
-        var candidateFileName = Path.GetFileName(candidateTrimmedPath);
-        if (!candidateFileName.Equals(queryFileName, StringComparison.Ordinal))
-            return int.MinValue;
-
-        return 2000 + CountSharedPathSuffixSegments(
-            Path.GetDirectoryName(trimmedQueryPath) ?? string.Empty,
-            Path.GetDirectoryName(candidateTrimmedPath) ?? string.Empty);
-    }
-
-    private static int ScoreVariantCandidate(string canonicalQueryPath, string candidateCanonicalPath)
-    {
-        if (candidateCanonicalPath.Equals(canonicalQueryPath, StringComparison.Ordinal))
-            return 4000;
-
-        if (candidateCanonicalPath.EndsWith(canonicalQueryPath, StringComparison.Ordinal))
-            return 3000 + CountSharedPathSuffixSegments(canonicalQueryPath, candidateCanonicalPath);
-
-        var queryFileName = Path.GetFileName(canonicalQueryPath);
-        var candidateFileName = Path.GetFileName(candidateCanonicalPath);
-        if (!candidateFileName.Equals(queryFileName, StringComparison.Ordinal))
-            return int.MinValue;
-
-        return 2000 + CountSharedPathSuffixSegments(
-            Path.GetDirectoryName(canonicalQueryPath) ?? string.Empty,
-            Path.GetDirectoryName(candidateCanonicalPath) ?? string.Empty);
-    }
-
-    private static int CountSharedPathSuffixSegments(string left, string right)
-    {
-        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
-            return 0;
-
-        var leftSegments = left.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        var rightSegments = right.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        int count = 0;
-        int leftIndex = leftSegments.Length - 1;
-        int rightIndex = rightSegments.Length - 1;
-
-        while (leftIndex >= 0 && rightIndex >= 0)
-        {
-            if (!leftSegments[leftIndex].Equals(rightSegments[rightIndex], StringComparison.Ordinal))
-                break;
-
-            count++;
-            leftIndex--;
-            rightIndex--;
-        }
-
-        return count;
+        return normalized.Substring(0, lastDot);
     }
 }

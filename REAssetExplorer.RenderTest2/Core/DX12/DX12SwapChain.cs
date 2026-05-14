@@ -130,7 +130,7 @@ public class DX12SwapChain : IDisposable
             // Create depth stencil resource
             var depthHeapProperties = new HeapProperties(HeapType.Default);
             var depthResourceDesc = ResourceDescription.Texture2D(
-                Format.D32_Float,
+                Format.D24_UNorm_S8_UInt,
                 (uint)width,
                 (uint)height,
                 1, // array size
@@ -139,7 +139,7 @@ public class DX12SwapChain : IDisposable
                 0, // sample quality
                 ResourceFlags.AllowDepthStencil);
 
-            var optimizedClearValue = new ClearValue(Format.D32_Float, 1.0f, 0);
+            var optimizedClearValue = new ClearValue(Format.D24_UNorm_S8_UInt, 1.0f, 0);
 
             _depthStencilBuffer = device.CreateCommittedResource(
                 depthHeapProperties,
@@ -157,7 +157,7 @@ public class DX12SwapChain : IDisposable
             // Create depth stencil view
             var dsvDesc = new DepthStencilViewDescription
             {
-                Format = Format.D32_Float,
+                Format = Format.D24_UNorm_S8_UInt,
                 ViewDimension = DepthStencilViewDimension.Texture2D,
                 Flags = DepthStencilViewFlags.None
             };

@@ -166,7 +166,7 @@ public class MeshRenderer : IDisposable
     
     private ID3D12RootSignature? _rootSignature;
     private ConstantBuffer<MeshConstants>? _constantBuffer;
-    
+
     // Pipeline state cache - stores unique pipeline states by shader combination
     private readonly Dictionary<string, CachedPipelineState> _pipelineStateCache = new();
     
@@ -218,7 +218,7 @@ public class MeshRenderer : IDisposable
             
             // Create descriptor heap for all materials
             CreateMaterialDescriptorHeap();
-            
+
             _initialized = true;
             return true;
         }
@@ -388,7 +388,7 @@ public class MeshRenderer : IDisposable
                     DepthFunc = ComparisonFunction.LessEqual,
                     StencilEnable = false
                 },
-                DepthStencilFormat = Format.D32_Float,
+                DepthStencilFormat = Format.D24_UNorm_S8_UInt,
                 SampleMask = uint.MaxValue,
                 // 4 render targets for deferred rendering G-Buffers
                 // RT0: Unused (reserved)
@@ -594,6 +594,42 @@ public class MeshRenderer : IDisposable
         }
     }
     
+    #region Outline Mask
+
+    /// <summary>
+    /// Draws the mesh into the caller's bound render target using the caller's PSO/root signature.
+    /// Used by the renderer's two-pass blurred outline (mask draw → horizontal blur → vertical composite).
+    /// The root signature must expose a per-object CBV at register b0 (matches OutlineMaskVS).
+    /// </summary>
+    public void RenderOutlineMask(
+        ID3D12GraphicsCommandList commandList,
+        CameraData camera,
+        int frameIndex,
+        ID3D12RootSignature rootSignature,
+        ID3D12PipelineState pso)
+    {
+        if (!_initialized || _vertexBuffer == null || _indexBuffer == null || _constantBuffer == null) return;
+
+        commandList.SetGraphicsRootSignature(rootSignature);
+        commandList.SetPipelineState(pso);
+        commandList.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
+        commandList.IASetVertexBuffers(0, _vertexBufferView);
+        commandList.IASetIndexBuffer(_indexBufferView);
+
+        float ar   = camera.AspectRatio > 0 ? camera.AspectRatio : 16.0f / 9.0f;
+        var view   = Matrix4x4.CreateLookAt(camera.Position, camera.Target, camera.Up);
+        var proj   = Matrix4x4.CreatePerspectiveFieldOfView(camera.Fov, ar, camera.NearPlane, camera.FarPlane);
+        var mvp    = Transform * view * proj;
+        var consts = new MeshConstants { Model = Transform, View = view, Projection = proj, ModelViewProjection = mvp };
+        _constantBuffer.Update(frameIndex, ref consts);
+        commandList.SetGraphicsRootConstantBufferView(0, _constantBuffer.GetGPUVirtualAddress(frameIndex));
+
+        foreach (var subMesh in _mesh.SubMeshes)
+            commandList.DrawIndexedInstanced((int)subMesh.IndexCount, 1, (int)subMesh.StartIndex, subMesh.BaseVertex, 0);
+    }
+
+    #endregion
+
     #region Material Management
     
     /// <summary>
@@ -1108,14 +1144,14 @@ public class MeshRenderer : IDisposable
         
         _srvHeap?.Dispose();
         _constantBuffer?.Dispose();
-        
+
         // Dispose all cached pipeline states
         foreach (var cached in _pipelineStateCache.Values)
         {
             cached.PipelineState?.Dispose();
         }
         _pipelineStateCache.Clear();
-        
+
         _rootSignature?.Dispose();
         _indexBuffer?.Dispose();
         _vertexBuffer?.Dispose();

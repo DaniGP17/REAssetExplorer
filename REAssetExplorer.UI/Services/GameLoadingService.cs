@@ -14,16 +14,13 @@ public class GameLoadingService
     private readonly FileListStorage _storage;
     private readonly FileListApiClient _apiClient;
     private readonly PakLoader _pakLoader;
-    private readonly CacheService _cacheService;
 
     public GameLoadingService(
         FileListStorage storage,
-        FileListApiClient apiClient,
-        CacheService cacheService)
+        FileListApiClient apiClient)
     {
         _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-        _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
         _pakLoader = new PakLoader();
     }
 
@@ -60,14 +57,13 @@ public class GameLoadingService
         onProgress?.Invoke("Loading PAK files...");
 
         var fileListPath = _storage.GetPath(gameProvider.Id);
-        var cachePath = _cacheService.GetCacheFilePath("Materials");
-        
+        var rszFilePath = Path.Combine(AppContext.BaseDirectory, "FileLists", gameProvider.RszFile);
+
         var result = await _pakLoader.LoadPakFilesAsync(
-            gameProvider, 
-            fileListPath, 
-            cachePath, 
-            loadMaterials: true, 
-            onProgress);
+            gameProvider,
+            fileListPath,
+            rszFilePath: File.Exists(rszFilePath) ? rszFilePath : null,
+            onProgress: onProgress);
 
         if (result.IsFailure)
         {
@@ -78,11 +74,6 @@ public class GameLoadingService
         return result.Value;
     }
     
-    /// <summary>
-    /// Gets the PakLoader instance to access materials cache.
-    /// </summary>
-    public PakLoader PakLoader => _pakLoader;
-
     private async Task<bool> DownloadFileListAsync(string gameId, Action<string>? onProgress)
     {
         onProgress?.Invoke("Downloading file list from API...");

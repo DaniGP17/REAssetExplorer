@@ -24,6 +24,10 @@ public static class TestDataPaths
     // File lists
     public static string RE7FileList => Path.Combine(FileListsDir, "re7.txt");
     public static string RE8FileList => Path.Combine(FileListsDir, "re8.txt");
+
+    // RSZ type databases
+    public static string RE7RszFile => Path.Combine(FileListsDir, "rszre7.json");
+    public static string RE8RszFile => Path.Combine(FileListsDir, "rszre8.json");
     
     // PAK files
     public static string RE7MainPak => Path.Combine(RE7InstallPath ?? "", "re_chunk_000.pak");

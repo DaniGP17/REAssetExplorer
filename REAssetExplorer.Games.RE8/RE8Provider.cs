@@ -32,6 +32,8 @@ public class RE8Provider : IGameProvider
         "re_chunk_000.pak",
     };
     
+    public string FilesPath => "natives\\stm\\";
+    
     /// <inheritdoc/>
     public IPakReader PakReader => _pakReader;
     

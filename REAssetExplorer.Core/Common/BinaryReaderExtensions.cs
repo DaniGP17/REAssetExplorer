@@ -146,15 +146,34 @@ public static class BinaryReaderExtensions
             stream.Seek(position.Value, SeekOrigin.Begin);
         }
 
+        int charSize = encoding == System.Text.Encoding.Unicode ||
+                       encoding == System.Text.Encoding.BigEndianUnicode
+            ? 2
+            : 1;
+
         var bytes = new List<byte>();
 
         while (true)
         {
-            byte b = reader.ReadByte();
-            if (b == 0)
+            byte[] chunk = reader.ReadBytes(charSize);
+
+            if (chunk.Length < charSize)
                 break;
 
-            bytes.Add(b);
+            bool isNull = true;
+            for (int i = 0; i < chunk.Length; i++)
+            {
+                if (chunk[i] != 0)
+                {
+                    isNull = false;
+                    break;
+                }
+            }
+
+            if (isNull)
+                break;
+
+            bytes.AddRange(chunk);
         }
 
         string result = encoding.GetString(bytes.ToArray());

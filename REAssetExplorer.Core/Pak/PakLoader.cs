@@ -1,6 +1,8 @@
 using REAssetExplorer.Core.Assets.Models;
 using REAssetExplorer.Core.Common;
 using REAssetExplorer.Core.Games;
+using REAssetExplorer.Core.Rsz;
+
 
 namespace REAssetExplorer.Core.Pak;
 
@@ -10,22 +12,20 @@ namespace REAssetExplorer.Core.Pak;
 public class PakLoader
 {
     private readonly PakFileList _globalPakFileList = new();
-    private MaterialsCache? _materialsCache;
+    private readonly RszTypeDb _rszTypeDb = new();
     
     /// <summary>
     /// Loads all PAK files specified in the game provider.
     /// </summary>
     /// <param name="gameProvider">The game provider containing PAK locations.</param>
     /// <param name="fileListPath">Path to the file list for hash resolution.</param>
-    /// <param name="cachePath">Optional path to the materials cache file.</param>
-    /// <param name="loadMaterials">Whether to load and cache materials.</param>
+    /// <param name="rszFilePath">Optional path to the game's rsz*.json type database file.</param>
     /// <param name="onProgress">Optional callback for progress updates.</param>
     /// <returns>Result containing dictionary of loaded PAK files or an error message.</returns>
     public async Task<Result<Dictionary<string, PakFile>>> LoadPakFilesAsync(
-        IGameProvider gameProvider, 
-        string fileListPath, 
-        string? cachePath = null,
-        bool loadMaterials = true,
+        IGameProvider gameProvider,
+        string fileListPath,
+        string? rszFilePath = null,
         Action<string>? onProgress = null)
     {
         ArgumentNullException.ThrowIfNull(gameProvider);
@@ -43,14 +43,12 @@ public class PakLoader
             return Result<Dictionary<string, PakFile>>.Failure(fileListResult.Error!);
         }
 
-        var result = await LoadPakFilesInternalAsync(gameProvider);
-        
-        if (result.IsSuccess && loadMaterials)
+        if (!string.IsNullOrEmpty(rszFilePath))
         {
-            await LoadMaterialsCacheAsync(gameProvider, result.Value!, cachePath, onProgress);
+            LoadRszTypeDb(rszFilePath);
         }
-        
-        return result;
+
+        return await LoadPakFilesInternalAsync(gameProvider);
     }
 
     private Result ValidateGameProvider(IGameProvider gameProvider)
@@ -85,6 +83,25 @@ public class PakLoader
             return Result.Failure($"Failed to load file list: {ex.Message}");
         }
     }
+
+    private void LoadRszTypeDb(string rszFilePath)
+    {
+        try
+        {
+            _rszTypeDb.LoadFromFile(rszFilePath);
+            RszRegistry.Current = _rszTypeDb;
+            Console.WriteLine($"Loaded RSZ type database: {_rszTypeDb.Count} types");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to load RSZ type database: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Gets the RSZ type database loaded for the current game.
+    /// </summary>
+    public RszTypeDb RszTypeDb => _rszTypeDb;
 
     private async Task<Result<Dictionary<string, PakFile>>> LoadPakFilesInternalAsync(IGameProvider gameProvider)
     {
@@ -179,136 +196,6 @@ public class PakLoader
         );
     }
 
-    /// <summary>
-    /// Loads or creates the materials cache from PAK files.
-    /// </summary>
-    /// <param name="gameProvider">The game provider.</param>
-    /// <param name="pakFiles">The loaded PAK files.</param>
-    /// <param name="cachePath">Optional path to the cache file.</param>
-    /// <param name="onProgress">Optional callback for progress updates.</param>
-    private async Task LoadMaterialsCacheAsync(
-        IGameProvider gameProvider, 
-        Dictionary<string, PakFile> pakFiles, 
-        string? cachePath,
-        Action<string>? onProgress)
-    {
-        try
-        {
-            onProgress?.Invoke("Loading materials cache...");
-            
-            // Try to load existing cache
-            if (!string.IsNullOrEmpty(cachePath) && File.Exists(cachePath))
-            {
-                try
-                {
-                    _materialsCache = CacheFile.LoadFromFile<MaterialsCache>(cachePath);
-                    if (_materialsCache != null)
-                    {
-                        onProgress?.Invoke($"Loaded materials cache with {_materialsCache.Count} materials");
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to load materials cache: {ex.Message}");
-                }
-            }
-            
-            // Create new cache
-            onProgress?.Invoke("Creating new materials cache...");
-            _materialsCache = new MaterialsCache();
-            
-            int totalMaterials = 0;
-            
-            await Task.Run(() =>
-            {
-                foreach (var pakFile in pakFiles)
-                {
-                    var entries = pakFile.Value.Entries
-                        .Where(e => e.FilePath.Contains(".mdf2", StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                    
-                    int processedCount = 0;
-                    
-                    foreach (var entry in entries)
-                    {
-                        onProgress?.Invoke($"Processing {processedCount}/{entries.Count} in {pakFile.Key} - Total materials: {totalMaterials}");
-                        
-                        try
-                        {
-                            var materialReader = gameProvider.AssetReaders.GetReader<MaterialData>(entry.FilePath);
-                            
-                            if (materialReader == null)
-                            {
-                                processedCount++;
-                                continue;
-                            }
-                            
-                            var entryData = gameProvider.PakReader.ExtractFile(pakFile.Value, entry);
-                            var result = materialReader.Read(entryData, entry.FilePath);
-                            
-                            if (result.IsSuccess && result.Value != null)
-                            {
-                                foreach (var matHeader in result.Value.MaterialHeaders)
-                                {
-                                    _materialsCache.AddMaterial(matHeader.MaterialName, entry.FilePath);
-                                }
-                                totalMaterials++;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error loading material {entry.FilePath}: {ex.Message}");
-                        }
-                        
-                        processedCount++;
-                    }
-                }
-            });
-            
-            onProgress?.Invoke($"Loaded {totalMaterials} material files");
-            
-            // Save cache if path is provided
-            if (!string.IsNullOrEmpty(cachePath))
-            {
-                try
-                {
-                    _materialsCache.SaveToFile(cachePath);
-                    onProgress?.Invoke("Materials cache saved successfully");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to save materials cache: {ex.Message}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading materials cache: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-        }
-    }
-    
-    /// <summary>
-    /// Gets the materials cache.
-    /// </summary>
-    /// <returns>The materials cache if loaded, null otherwise.</returns>
-    public MaterialsCache? GetMaterialsCache()
-    {
-        return _materialsCache;
-    }
-    
-    /// <summary>
-    /// Tries to get the file path for a material by name.
-    /// </summary>
-    /// <param name="materialName">The name of the material.</param>
-    /// <param name="path">The file path if found.</param>
-    /// <returns>True if the material was found, false otherwise.</returns>
-    public bool TryGetMaterialPath(string materialName, out string? path)
-    {
-        path = null;
-        return _materialsCache?.TryGetMaterial(materialName, out path) ?? false;
-    }
 }
 
 /// <summary>

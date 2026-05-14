@@ -38,11 +38,6 @@ public interface IDependencyResolver
 /// </summary>
 public class DependencyResolutionContext
 {
-    public MaterialsCache? MaterialsCache { get; set; }
-    
-    // Puedes agregar más recursos según necesites:
-    // public TexturesCache? TexturesCache { get; set; }
-    // public ShadersCache? ShadersCache { get; set; }
 }
 
 /// <summary>
@@ -51,7 +46,6 @@ public class DependencyResolutionContext
 public class DependencyLoadContext
 {
     public IAssetLoader AssetLoader { get; }
-    public MaterialsCache? MaterialsCache { get; set; }
     public IGameProvider? GameProvider { get; set; }
     
     /// <summary>

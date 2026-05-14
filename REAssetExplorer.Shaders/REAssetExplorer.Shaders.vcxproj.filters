@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Standard">
+      <UniqueIdentifier>{96e12730-2f05-4907-802d-da2459a91634}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Deferred">
+      <UniqueIdentifier>{a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Prepass">
+      <UniqueIdentifier>{b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Standard GBuffer Shaders -->
+    <FxCompile Include="Standard_GBuffer_VS.hlsl">
+      <Filter>Standard</Filter>
+    </FxCompile>
+    <FxCompile Include="Standard_GBuffer_PS.hlsl">
+      <Filter>Standard</Filter>
+    </FxCompile>
+    
+    <!-- Deferred Lighting Shaders -->
+    <FxCompile Include="DeferredLighting_VS.hlsl">
+      <Filter>Deferred</Filter>
+    </FxCompile>
+    <FxCompile Include="DeferredLighting_PS.hlsl">
+      <Filter>Deferred</Filter>
+    </FxCompile>
+    
+    <!-- Alpha Mask Prepass Shaders -->
+    <FxCompile Include="AlphaMask_Prepass_VS.hlsl">
+      <Filter>Prepass</Filter>
+    </FxCompile>
+    <FxCompile Include="AlphaMask_Prepass_PS.hlsl">
+      <Filter>Prepass</Filter>
+    </FxCompile>
+    
+    <!-- Unlit Utility Shaders -->
+    <FxCompile Include="Unlit_VS.hlsl">
+      <Filter>Utility</Filter>
+    </FxCompile>
+    <FxCompile Include="Unlit_PS.hlsl">
+      <Filter>Utility</Filter>
+    </FxCompile>
+    
+    <!-- Tone Mapping (HDR) Shaders -->
+    <FxCompile Include="ToneMapping_VS.hlsl">
+      <Filter>Utility</Filter>
+    </FxCompile>
+    <FxCompile Include="ToneMapping_PS.hlsl">
+      <Filter>Utility</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>

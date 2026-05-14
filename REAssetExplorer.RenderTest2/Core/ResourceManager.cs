@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Threading;
 using REAssetExplorer.Core.Assets;
 using REAssetExplorer.Core.Assets.Models;
-using REAssetExplorer.Core.Common;
 using REAssetExplorer.Core.Games;
 using REAssetExplorer.Core.Pak;
 using REAssetExplorer.RenderTest2.Assets;
@@ -17,406 +15,170 @@ namespace REAssetExplorer.RenderTest2.Core;
 public class ResourceManager : IDisposable
 {
     private readonly AssetLoader _assetLoader;
-    private readonly IGameProvider _gameProvider;
-
-    private readonly ConcurrentQueue<LoadRequest> _loadQueue = new();
-    private int _loadQueueCount = 0;
-
-    private readonly ConcurrentQueue<Resource> _deleteQueue = new();
-    
-    // Deferred release queue for GPU resource safety
+    private readonly ConcurrentDictionary<ulong, Resource> _resources = new();
     private readonly ConcurrentQueue<(Resource resource, ulong releaseFrame)> _releaseQueue = new();
 
-    private readonly ConcurrentDictionary<ulong, Resource> _resourceDict = new();
-
-    private long _totalLoadedResources = 0;
-    private long _totalFailedLoads = 0;
-
-    private class LoadRequest
-    {
-        public string FilePath { get; set; } = string.Empty;
-        public ResourceType Type { get; set; }
-        public bool LoadDependencies { get; set; }
-        public ulong RequestId { get; set; }
-    }
-
-    public int LoadQueueCount => Volatile.Read(ref _loadQueueCount);
-    public long TotalLoadedResources => Volatile.Read(ref _totalLoadedResources);
-    public long TotalFailedLoads => Volatile.Read(ref _totalFailedLoads);
-
-    public ResourceManager(Dictionary<string, PakFile> pakFiles, IGameProvider gameProvider, MaterialsCache? materialsCache = null)
-    {
-        _gameProvider = gameProvider ?? throw new ArgumentNullException(nameof(gameProvider));
-        _assetLoader = new AssetLoader(gameProvider, pakFiles, materialsCache);
-    }
-    
-    /// <summary>
-    /// Gets the underlying AssetLoader for advanced operations
-    /// </summary>
     public AssetLoader AssetLoader => _assetLoader;
 
-    #region Queue Management
-
-    public ulong EnqueueLoad(string filePath, ResourceType type, bool loadDependencies = true)
+    public ResourceManager(Dictionary<string, PakFile> pakFiles, IGameProvider gameProvider)
     {
-        var requestId = HashPath(filePath);
-        
-        if (_resourceDict.ContainsKey(requestId))
-            return requestId;
+        _assetLoader = new AssetLoader(
+            gameProvider ?? throw new ArgumentNullException(nameof(gameProvider)),
+            pakFiles ?? throw new ArgumentNullException(nameof(pakFiles)));
+    }
 
-        var request = new LoadRequest
+    /// <summary>
+    /// Loads and registers a GPU resource. Returns the cached resource if already loaded.
+    /// </summary>
+    public Resource? Load(string filePath, ResourceType type, bool loadDependencies = true)
+    {
+        var id = HashPath(filePath);
+        if (_resources.TryGetValue(id, out var cached))
+            return cached;
+
+        return type switch
         {
-            FilePath = filePath.ToLowerInvariant(),
-            Type = type,
-            LoadDependencies = loadDependencies,
-            RequestId = requestId
+            ResourceType.Texture => LoadTexture(filePath),
+            ResourceType.Mesh    => LoadMesh(filePath, loadDependencies),
+            _                    => null
         };
-
-        _loadQueue.Enqueue(request);
-        Interlocked.Increment(ref _loadQueueCount);
-        
-        return requestId;
-    }
-    
-    public void ProcessLoadQueue(int maxItemsPerFrame = Int32.MaxValue)
-    {
-        int processedCount = 0;
-        
-        while (processedCount < maxItemsPerFrame && _loadQueue.TryDequeue(out var request))
-        {
-            Interlocked.Decrement(ref _loadQueueCount);
-            
-            if (_resourceDict.ContainsKey(request.RequestId))
-            {
-                processedCount++;
-                continue;
-            }
-
-            Resource? resource = request.Type switch
-            {
-                ResourceType.Texture => LoadTexture(request.FilePath),
-                ResourceType.Mesh => LoadMesh(request.FilePath),
-                //ResourceType.Material => LoadMaterial(request.FilePath),
-                ResourceType.Shader => LoadShader(request.FilePath),
-                _ => null
-            };
-
-            if (resource != null)
-            {
-                Interlocked.Increment(ref _totalLoadedResources);
-            }
-            else
-            {
-                Interlocked.Increment(ref _totalFailedLoads);
-            }
-
-            processedCount++;
-        }
-    }
-
-    public void EnqueueDelete(ulong id)
-    {
-        if (_resourceDict.TryRemove(id, out var resource))
-        {
-            _deleteQueue.Enqueue(resource);
-        }
-    }
-
-    public void EnqueueDelete(Resource resource)
-    {
-        _deleteQueue.Enqueue(resource);
-        RemoveResource(resource.Id);
-    }
-
-    public void ProcessDeletes()
-    {
-        while (_deleteQueue.TryDequeue(out var resource))
-        {
-            try
-            {
-                resource.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error disposing resource {resource.FilePath}: {ex.Message}");
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Prepares a resource for deferred release (will be released after 2 frames to ensure GPU is done with it)
-    /// </summary>
-    public void PrepareResourceRelease(Resource resource)
-    {
-        var currentFrame = Renderer.Instance?.GetRenderFrame() ?? 0;
-        var releaseFrame = currentFrame + 2; // Wait 2 frames before releasing
-        _releaseQueue.Enqueue((resource, releaseFrame));
-    }
-    
-    /// <summary>
-    /// Executes deferred resource releases for resources that are safe to release
-    /// Should be called once per frame
-    /// </summary>
-    public void ResourceReleaseLastExecute()
-    {
-        var currentFrame = Renderer.Instance?.GetRenderFrame() ?? 0;
-        var itemsToRequeue = new List<(Resource resource, ulong releaseFrame)>();
-        
-        // Process all items in the queue
-        while (_releaseQueue.TryDequeue(out var item))
-        {
-            if (item.releaseFrame <= currentFrame)
-            {
-                // Safe to release now
-                try
-                {
-                    RemoveResource(item.resource.Id);
-                    item.resource.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error releasing resource {item.resource.FilePath}: {ex.Message}");
-                }
-            }
-            else
-            {
-                // Not ready yet, requeue
-                itemsToRequeue.Add(item);
-            }
-        }
-        
-        // Requeue items that aren't ready
-        foreach (var item in itemsToRequeue)
-        {
-            _releaseQueue.Enqueue(item);
-        }
-    }
-
-    #endregion
-
-    #region Resource Loading
-
-    private TResource? LoadAsset<TAssetData, TResource>(
-        string filePath, 
-        string assetTypeName,
-        Func<TAssetData, TResource> createResource,
-        bool loadDependencies = true)
-        where TAssetData : AssetData
-        where TResource : Resource
-    {
-        var stopwatch = Stopwatch.StartNew();
-        
-        try
-        {
-            var result = _assetLoader.LoadAsset<TAssetData>(filePath, loadDependencies, progress =>
-            {
-                
-            });
-
-            if (result.IsFailure || result.Value == null)
-            {
-                Console.WriteLine($"Failed to load {assetTypeName} {filePath}: {result.Error}");
-                return null;
-            }
-
-            var resource = createResource(result.Value);
-            var normalizedPath = filePath.ToLowerInvariant();
-            resource.Id = HashPath(normalizedPath);
-            resource.FilePath = normalizedPath;
-            resource.Name = System.IO.Path.GetFileNameWithoutExtension(filePath);
-            resource.State = ResourceState.Loaded;
-            resource.LoadTimeMs = stopwatch.ElapsedMilliseconds;
-
-            _resourceDict[resource.Id] = resource;
-            
-            return resource;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading {assetTypeName} {filePath}: {ex.Message}");
-            Console.WriteLine(ex.StackTrace);
-            return null;
-        }
-        finally
-        {
-            stopwatch.Stop();
-        }
     }
 
     private RenderTexture? LoadTexture(string filePath)
     {
-        return LoadAsset<TextureData, RenderTexture>(filePath, "Texture", textureData =>
+        var result = _assetLoader.LoadAsset<TextureData>(filePath, loadDependencies: false);
+        if (result.IsFailure || result.Value == null)
         {
-            return TextureMapper.MapToRenderTexture(filePath, textureData);
-        }, loadDependencies: false); // Las texturas normalmente no tienen dependencias
+            Console.WriteLine($"Failed to load texture {filePath}: {result.Error}");
+            return null;
+        }
+        return Register(filePath, TextureMapper.MapToRenderTexture(filePath, result.Value));
     }
 
-    private RenderMesh? LoadMesh(string filePath)
+    private RenderMesh? LoadMesh(string filePath, bool loadDependencies)
     {
-        return LoadAsset<MeshData, RenderMesh>(filePath, "Mesh", meshData =>
+        var result = _assetLoader.LoadAsset<MeshData>(filePath, loadDependencies);
+        if (result.IsFailure || result.Value == null)
         {
-            return MeshMapper.MapToRenderMesh(filePath, meshData);
-        }, loadDependencies: true); // Los meshes pueden tener materiales/texturas como dependencias
+            Console.WriteLine($"Failed to load mesh {filePath}: {result.Error}");
+            return null;
+        }
+        return Register(filePath, MeshMapper.MapToRenderMesh(filePath, result.Value));
     }
 
-    /*private MaterialResource? LoadMaterial(string filePath)
-    {
-        return LoadAsset<MaterialData, MaterialResource>(filePath, "Material", materialData =>
-        {
-            var resource = new MaterialResource { MaterialData = materialData };
-
-            if (materialData.Dependencies != null)
-            {
-                var textureDeps = materialData.Dependencies
-                    .Where(d => d.FilePath?.EndsWith(".tex", StringComparison.OrdinalIgnoreCase) == true);
-
-                foreach (var dep in textureDeps)
-                {
-                    if (!string.IsNullOrEmpty(dep.FilePath))
-                    {
-                        var texId = HashPath(dep.FilePath);
-                        resource.TextureIds.Add(texId);
-                        resource.Dependencies.Add(texId);
-                    }
-                }
-            }
-
-            return resource;
-        });
-    }*/
-
-    private ShaderResource? LoadShader(string filePath)
-    {
-        // TODO: Implementar carga de shaders cuando definas el formato
-        Console.WriteLine($"Shader loading not yet implemented: {filePath}");
-        return null;
-    }
-    #endregion
-
-    #region Resource Retrieval
-
-    public bool TryGetResource(ulong id, out Resource? resource)
-    {
-        return _resourceDict.TryGetValue(id, out resource);
-    }
-    
     /// <summary>
-    /// Get all loaded resources of a specific type
+    /// Loads a mesh and injects a specific material (with its texture dependencies) into it.
+    /// Returns cached RenderMesh if the path was already loaded.
     /// </summary>
-    public IEnumerable<T> GetAllResources<T>() where T : Resource
+    public RenderMesh? LoadMeshWithMaterial(string meshPath, string mdfPath)
     {
-        return _resourceDict.Values.OfType<T>();
-    }
+        var id = HashPath(meshPath);
+        if (_resources.TryGetValue(id, out var cached))
+            return cached as RenderMesh;
 
-    public bool TryGetResource(string filePath, out Resource? resource)
-    {
-        return TryGetResource(HashPath(filePath.ToLowerInvariant()), out resource);
-    }
-
-    public T? GetResource<T>(ulong id) where T : Resource
-    {
-        if (_resourceDict.TryGetValue(id, out var resource) && resource is T typedResource)
+        var meshResult = _assetLoader.LoadAsset<MeshData>(meshPath, loadDependencies: false);
+        if (meshResult.IsFailure || meshResult.Value == null)
         {
-            return typedResource;
+            Console.WriteLine($"Failed to load mesh {meshPath}: {meshResult.Error}");
+            return null;
         }
-        return null;
-    }
 
-    public T? GetResource<T>(string filePath) where T : Resource
-    {
-        return GetResource<T>(HashPath(filePath));
-    }
+        var meshData = meshResult.Value;
 
-    public IEnumerable<T> GetResourcesOfType<T>() where T : Resource
-    {
-        return _resourceDict.Values.OfType<T>();
-    }
-
-    public bool IsResourceLoaded(ulong id)
-    {
-        return _resourceDict.ContainsKey(id);
-    }
-
-    public bool IsResourceLoaded(string filePath)
-    {
-        return IsResourceLoaded(HashPath(filePath));
-    }
-
-    #endregion
-
-    #region Resource Management
-
-    public bool RegisterResource(ulong id, Resource resource)
-    {
-        return _resourceDict.TryAdd(id, resource);
-    }
-
-    public bool RemoveResource(ulong id)
-    {
-        return _resourceDict.TryRemove(id, out _);
-    }
-
-    public void ClearAll()
-    {
-        foreach (var resource in _resourceDict.Values)
+        if (!string.IsNullOrEmpty(mdfPath))
         {
-            EnqueueDelete(resource);
+            var matResult = _assetLoader.LoadAsset<MaterialData>(mdfPath, loadDependencies: true);
+            if (matResult.IsSuccess && matResult.Value != null)
+                meshData.ResolvedDependencies[mdfPath] = matResult.Value;
         }
-        ProcessDeletes();
-        
-        _resourceDict.Clear();
-        
-        while (_loadQueue.TryDequeue(out _))
-        {
-            Interlocked.Decrement(ref _loadQueueCount);
-        }
+
+        return Register(meshPath, MeshMapper.MapToRenderMesh(meshPath, meshData));
     }
 
-    public string GetStats()
+    private T Register<T>(string filePath, T resource) where T : Resource
     {
-        return $"Resources Loaded: {_resourceDict.Count}, " +
-               $"Load Queue: {LoadQueueCount}, " +
-               $"Total Loaded: {TotalLoadedResources}, " +
-               $"Total Failed: {TotalFailedLoads}";
+        var normalized = filePath.ToLowerInvariant();
+        resource.Id = HashPath(normalized);
+        resource.FilePath = normalized;
+        resource.Name = Path.GetFileNameWithoutExtension(filePath);
+        resource.State = ResourceState.Loaded;
+        _resources[resource.Id] = resource;
+        return resource;
     }
 
-    #endregion
+    public T? GetResource<T>(ulong id) where T : Resource =>
+        _resources.TryGetValue(id, out var r) && r is T t ? t : null;
 
-    #region Helper Methods
+    public T? GetResource<T>(string filePath) where T : Resource =>
+        GetResource<T>(HashPath(filePath));
+
+    public bool TryGetResource(ulong id, out Resource? resource) =>
+        _resources.TryGetValue(id, out resource);
+
+    public IEnumerable<T> GetAllResources<T>() where T : Resource =>
+        _resources.Values.OfType<T>();
+
+    /// <summary>
+    /// Schedules a resource for release after 2 frames to ensure the GPU has finished using it.
+    /// </summary>
+    public void PrepareResourceRelease(Resource resource)
+    {
+        var frame = Renderer.Instance?.GetRenderFrame() ?? 0;
+        _resources.TryRemove(resource.Id, out _);
+        _releaseQueue.Enqueue((resource, frame + 2));
+    }
+
+    /// <summary>
+    /// Releases resources whose frame delay has elapsed. Call once per frame.
+    /// </summary>
+    public void ResourceReleaseLastExecute()
+    {
+        var frame = Renderer.Instance?.GetRenderFrame() ?? 0;
+        var deferred = new List<(Resource, ulong)>();
+
+        while (_releaseQueue.TryDequeue(out var item))
+        {
+            if (item.releaseFrame <= frame)
+                item.resource.Dispose();
+            else
+                deferred.Add(item);
+        }
+
+        foreach (var item in deferred)
+            _releaseQueue.Enqueue(item);
+    }
+
+    public static ResourceType GetResourceTypeFromExtension(string filePath)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".tex"  => ResourceType.Texture,
+            ".mesh" => ResourceType.Mesh,
+            ".mdf2" => ResourceType.Material,
+            ".mmtr" => ResourceType.Shader,
+            _       => throw new NotSupportedException($"Unsupported file extension: {ext}")
+        };
+    }
 
     private static ulong HashPath(string path)
     {
-        var normalized = path.ToLowerInvariant();
         ulong hash = 0xcbf29ce484222325;
-        
-        foreach (char c in normalized)
+        foreach (char c in path.ToLowerInvariant())
         {
             hash ^= c;
             hash *= 0x100000001b3;
         }
-        
         return hash;
     }
-    
-    // FindAssetEntry ya no es necesario, AssetLoader lo maneja internamente
-    
-    public static ResourceType GetResourceTypeFromExtension(string filePath)
-    {
-        var ext = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
-        return ext switch
-        {
-            ".tex" => ResourceType.Texture,
-            ".mesh" => ResourceType.Mesh,
-            ".mdf2" => ResourceType.Material,
-            ".mmtr" => ResourceType.Shader,
-            _ => throw new NotSupportedException($"Unsupported file extension: {ext}")
-        };
-    }
-
-    #endregion
 
     public void Dispose()
     {
-        ClearAll();
+        foreach (var r in _resources.Values)
+            r.Dispose();
+        _resources.Clear();
+
+        while (_releaseQueue.TryDequeue(out var item))
+            item.resource.Dispose();
     }
 }

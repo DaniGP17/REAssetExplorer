@@ -1,0 +1,159 @@
+<UserControl x:Class="REAssetExplorer.TestUI.Controls.ObjectInspector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:REAssetExplorer.TestUI.Controls"
+             xmlns:vm="clr-namespace:REAssetExplorer.TestUI"
+             Background="#1e1e1e">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <local:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
+
+        <!-- ── Component accordion header ────────────────────────────────── -->
+        <Style x:Key="ComponentHeaderStyle" TargetType="ToggleButton">
+            <Setter Property="Background"               Value="#252525"/>
+            <Setter Property="Foreground"               Value="#c8c8c8"/>
+            <Setter Property="HorizontalAlignment"      Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle"         Value="{x:Null}"/>
+            <Setter Property="Cursor"                   Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="#181818" BorderThickness="0,0,0,1"
+                                Padding="0,5,8,5">
+                            <DockPanel>
+                                <!-- Expand arrow -->
+                                <Path x:Name="Arrow"
+                                      Data="M 3 1 L 9 5.5 L 3 10 Z"
+                                      Fill="#555"
+                                      Width="9" Height="11"
+                                      Stretch="Uniform"
+                                      DockPanel.Dock="Left"
+                                      Margin="8,0,6,0"
+                                      VerticalAlignment="Center"/>
+                                <!-- Component name -->
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Arrow" Property="Data"  Value="M 0 2 L 9 2 L 4.5 9 Z"/>
+                                <Setter TargetName="Arrow" Property="Fill"  Value="#aaa"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background"               Value="#2e2e2e"/>
+                                <Setter TargetName="Arrow" Property="Fill"  Value="#ddd"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </UserControl.Resources>
+
+    <Grid>
+
+        <!-- ── Empty state ─────────────────────────────────────────────────── -->
+        <TextBlock Text="Select a GameObject in the Hierarchy"
+                   Foreground="#3a3a3a" FontSize="12"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="{Binding HasContent,
+                                        Converter={StaticResource InvBoolToVis},
+                                        FallbackValue=Visible}"/>
+
+        <!-- ── Inspector content ───────────────────────────────────────────── -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding HasContent,
+                                           Converter={StaticResource BoolToVis},
+                                           FallbackValue=Collapsed}">
+            <StackPanel>
+
+                <!-- GameObject header -->
+                <Border Padding="10,8,10,8"
+                        Background="#202020"
+                        BorderBrush="#181818" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ObjectName}"
+                                   Foreground="#e8e8e8" FontSize="13"
+                                   FontFamily="pack://application:,,,/Assets/fonts/#DIN Alternate"/>
+                        <TextBlock Text="{Binding ObjectTag, StringFormat='Tag: {0}'}"
+                                   Foreground="#666" FontSize="11" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Components accordion -->
+                <ItemsControl ItemsSource="{Binding Components}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#141414" BorderThickness="0,0,0,1">
+                                <StackPanel>
+
+                                    <!-- Header toggle -->
+                                    <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                  Style="{StaticResource ComponentHeaderStyle}">
+                                        <TextBlock Text="{Binding Name}"
+                                                   Foreground="#c0c0c0" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Name}"/>
+                                    </ToggleButton>
+
+                                    <!-- Fields (shown when expanded) -->
+                                    <Border Background="#191919"
+                                            BorderBrush="#222" BorderThickness="0,0,0,1"
+                                            Visibility="{Binding IsExpanded,
+                                                                 Converter={StaticResource BoolToVis}}">
+                                        <ItemsControl ItemsSource="{Binding Fields}"
+                                                      Padding="0,4,0,4">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="12,2,8,2" MinHeight="18">
+                                                        <Grid.ColumnDefinitions>
+                                                            <!-- type tag -->
+                                                            <ColumnDefinition Width="58"/>
+                                                            <!-- field name -->
+                                                            <ColumnDefinition Width="110"/>
+                                                            <!-- value -->
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding Type}"
+                                                                   Foreground="#2e6090" FontSize="10"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"/>
+
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding Name}"
+                                                                   Foreground="#787878" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="4,0,6,0"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Name}"/>
+
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{Binding DisplayValue}"
+                                                                   Foreground="#c8c8c8" FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   TextWrapping="Wrap"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+</UserControl>

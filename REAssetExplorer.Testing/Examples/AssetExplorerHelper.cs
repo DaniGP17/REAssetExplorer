@@ -3,6 +3,8 @@ using REAssetExplorer.Core.Assets;
 using REAssetExplorer.Core.Assets.Models;
 using REAssetExplorer.Core.Common;
 using REAssetExplorer.Core.Pak;
+using REAssetExplorer.Core.Rsz;
+using REAssetExplorer.Games.RE7;
 using REAssetExplorer.Testing.TestHelpers;
 
 namespace REAssetExplorer.Testing.Examples;
@@ -12,15 +14,27 @@ public static class AssetExplorerHelper
     public static PakFile LoadRE7Pak()
     {
         Console.WriteLine(" Loading RE7 PAK file...");
-        
+
+        if (File.Exists(TestDataPaths.RE7RszFile))
+        {
+            var rszDb = new RszTypeDb();
+            rszDb.LoadFromFile(TestDataPaths.RE7RszFile);
+            RszRegistry.Current = rszDb;
+            Console.WriteLine($" RSZ type database loaded: {rszDb.Count} types");
+        }
+        else
+        {
+            Console.WriteLine($" Warning: RSZ file not found at {TestDataPaths.RE7RszFile}");
+        }
+
         var fileList = new PakFileList();
         fileList.SetupFromFile(TestDataPaths.RE7FileList);
 
         var pakReader = new PakReaderV4();
         var pakFile = pakReader.Open(TestDataPaths.RE7MainPak, fileList);
-        
+
         Console.WriteLine($" PAK loaded: {pakFile.Entries.Count:N0} entries\n");
-        
+
         return pakFile;
     }
     

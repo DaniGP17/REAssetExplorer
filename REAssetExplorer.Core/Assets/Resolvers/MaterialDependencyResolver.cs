@@ -110,27 +110,11 @@ public class MaterialDependencyResolver : IDependencyResolver
             return sdfResult.Value;
         }*/
         
-        string texturePathToLoad = dependency.FilePath;
-        if (context.AssetLoader is AssetLoader assetLoader)
-        {
-            texturePathToLoad = assetLoader.FindBestVariantPath(dependency.FilePath);
-        }
-
         var textureResult = context.AssetLoader.LoadAsset<TextureData>(
-            texturePathToLoad,
+            dependency.FilePath,
             loadDependencies: false,
             onProgress
         );
-
-        if ((!textureResult.IsSuccess || textureResult.Value == null) &&
-            !texturePathToLoad.Equals(dependency.FilePath, StringComparison.Ordinal))
-        {
-            textureResult = context.AssetLoader.LoadAsset<TextureData>(
-                dependency.FilePath,
-                loadDependencies: false,
-                onProgress
-            );
-        }
 
         if (!textureResult.IsSuccess || textureResult.Value == null)
         {

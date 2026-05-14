@@ -15,57 +15,67 @@ public class DX12CommandQueue : IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr hObject);
 
-    private const uint INFINITE = 0xFFFFFFFF;
-    private ID3D12CommandQueue? _commandQueue;
-    private ID3D12CommandAllocator? _commandAllocator;
-    private ID3D12GraphicsCommandList? _commandList;
-    private ID3D12Fence? _fence;
-    private ulong _fenceValue;
-    private IntPtr _fenceEvent;
-    private bool _disposed;
+    private const uint INFINITE     = 0xFFFFFFFF;
+    private const int  FrameCount   = 2;
 
-    public ID3D12CommandQueue CommandQueue => _commandQueue ?? throw new InvalidOperationException("CommandQueue not initialized");
-    public ID3D12CommandAllocator CommandAllocator => _commandAllocator ?? throw new InvalidOperationException("CommandAllocator not initialized");
-    public ID3D12GraphicsCommandList CommandList => _commandList ?? throw new InvalidOperationException("CommandList not initialized");
+    private ID3D12CommandQueue?               _commandQueue;
+    // One allocator per back-buffer slot for double-buffered rendering.
+    private readonly ID3D12CommandAllocator?[] _frameAllocators = new ID3D12CommandAllocator?[FrameCount];
+    // Dedicated allocator for one-off uploads (texture upload, etc.).
+    private ID3D12CommandAllocator?            _uploadAllocator;
+    private ID3D12GraphicsCommandList?         _commandList;
+    private ID3D12Fence?                       _fence;
+    private ulong                              _nextFenceValue = 1;
+    // Last fence value signaled for each frame slot; used in BeginFrame to wait for previous use.
+    private readonly ulong[]                   _frameFenceValues = new ulong[FrameCount];
+    private IntPtr                             _fenceEvent;
+    private bool                               _disposed;
+
+    public ID3D12CommandQueue        CommandQueue    => _commandQueue    ?? throw new InvalidOperationException("CommandQueue not initialized");
+    public ID3D12GraphicsCommandList CommandList     => _commandList     ?? throw new InvalidOperationException("CommandList not initialized");
+    // Legacy property used by one-off GPU operations (texture uploads).
+    public ID3D12CommandAllocator    CommandAllocator => _uploadAllocator ?? throw new InvalidOperationException("Upload allocator not initialized");
 
     public bool Initialize(ID3D12Device device)
     {
         try
         {
-            // Create command queue
-            var queueDesc = new CommandQueueDescription
+            _commandQueue = device.CreateCommandQueue(new CommandQueueDescription
             {
-                Type = CommandListType.Direct,
+                Type  = CommandListType.Direct,
                 Flags = CommandQueueFlags.None
-            };
-
-            _commandQueue = device.CreateCommandQueue(queueDesc);
+            });
             if (_commandQueue == null)
             {
                 Console.WriteLine("Failed to create command queue");
                 return false;
             }
 
-            // Create command allocator
-            _commandAllocator = device.CreateCommandAllocator(CommandListType.Direct);
-            if (_commandAllocator == null)
+            for (int i = 0; i < FrameCount; i++)
             {
-                Console.WriteLine("Failed to create command allocator");
+                _frameAllocators[i] = device.CreateCommandAllocator(CommandListType.Direct);
+                if (_frameAllocators[i] == null)
+                {
+                    Console.WriteLine($"Failed to create frame command allocator {i}");
+                    return false;
+                }
+            }
+
+            _uploadAllocator = device.CreateCommandAllocator(CommandListType.Direct);
+            if (_uploadAllocator == null)
+            {
+                Console.WriteLine("Failed to create upload command allocator");
                 return false;
             }
 
-            // Create command list
-            _commandList = device.CreateCommandList<ID3D12GraphicsCommandList>(CommandListType.Direct, _commandAllocator, null);
+            _commandList = device.CreateCommandList<ID3D12GraphicsCommandList>(CommandListType.Direct, _frameAllocators[0]!, null);
             if (_commandList == null)
             {
                 Console.WriteLine("Failed to create command list");
                 return false;
             }
-
-            // Close the command list (it starts in recording state)
             _commandList.Close();
 
-            // Create synchronization objects
             _fence = device.CreateFence(0);
             if (_fence == null)
             {
@@ -73,9 +83,7 @@ public class DX12CommandQueue : IDisposable
                 return false;
             }
 
-            _fenceValue = 1;
             _fenceEvent = CreateEvent(IntPtr.Zero, false, false, null);
-
             if (_fenceEvent == IntPtr.Zero)
             {
                 Console.WriteLine("Failed to create fence event");
@@ -91,6 +99,59 @@ public class DX12CommandQueue : IDisposable
         }
     }
 
+    /// <summary>
+    /// Call at the start of each frame. Waits (if needed) for the previous submission that
+    /// used this frame slot's allocator, then resets the allocator and command list.
+    /// With FrameCount=2 this lets the CPU run one frame ahead of the GPU.
+    /// </summary>
+    public void BeginFrame(int frameIndex)
+    {
+        if (_fence == null || _commandList == null || _frameAllocators[frameIndex] == null || _fenceEvent == IntPtr.Zero)
+            return;
+
+        try
+        {
+            var waitValue = _frameFenceValues[frameIndex];
+            if (waitValue > 0 && _fence.CompletedValue < waitValue)
+            {
+                _fence.SetEventOnCompletion(waitValue, _fenceEvent);
+                WaitForSingleObject(_fenceEvent, INFINITE);
+            }
+
+            _frameAllocators[frameIndex]!.Reset();
+            _commandList.Reset(_frameAllocators[frameIndex], null);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in BeginFrame: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Call after ExecuteCommandList for the given frame slot.
+    /// Signals the fence so BeginFrame can know when this slot is safe to reuse.
+    /// </summary>
+    public void EndFrame(int frameIndex)
+    {
+        if (_commandQueue == null || _fence == null)
+            return;
+
+        try
+        {
+            _commandQueue.Signal(_fence, _nextFenceValue);
+            _frameFenceValues[frameIndex] = _nextFenceValue;
+            _nextFenceValue++;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in EndFrame: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Full GPU flush — blocks until all previously submitted work completes.
+    /// Use for resize, resource uploads, and shutdown only.
+    /// </summary>
     public void WaitForGPU()
     {
         if (_commandQueue == null || _fence == null || _fenceEvent == IntPtr.Zero)
@@ -98,15 +159,13 @@ public class DX12CommandQueue : IDisposable
 
         try
         {
-            _commandQueue.Signal(_fence, _fenceValue);
-
-            if (_fence.CompletedValue < _fenceValue)
+            _commandQueue.Signal(_fence, _nextFenceValue);
+            if (_fence.CompletedValue < _nextFenceValue)
             {
-                _fence.SetEventOnCompletion(_fenceValue, _fenceEvent);
+                _fence.SetEventOnCompletion(_nextFenceValue, _fenceEvent);
                 WaitForSingleObject(_fenceEvent, INFINITE);
             }
-
-            _fenceValue++;
+            _nextFenceValue++;
         }
         catch (Exception ex)
         {
@@ -114,10 +173,7 @@ public class DX12CommandQueue : IDisposable
         }
     }
 
-    public void Shutdown()
-    {
-        Dispose();
-    }
+    public void Shutdown() => Dispose();
 
     public void Dispose()
     {
@@ -134,13 +190,18 @@ public class DX12CommandQueue : IDisposable
 
         _fence?.Dispose();
         _commandList?.Dispose();
-        _commandAllocator?.Dispose();
+        for (int i = 0; i < FrameCount; i++)
+        {
+            _frameAllocators[i]?.Dispose();
+            _frameAllocators[i] = null;
+        }
+        _uploadAllocator?.Dispose();
         _commandQueue?.Dispose();
 
-        _fence = null;
-        _commandList = null;
-        _commandAllocator = null;
-        _commandQueue = null;
-        _disposed = true;
+        _fence           = null;
+        _commandList     = null;
+        _uploadAllocator = null;
+        _commandQueue    = null;
+        _disposed        = true;
     }
 }

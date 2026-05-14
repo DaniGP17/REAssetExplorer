@@ -38,5 +38,10 @@ public enum AssetType
     /// <summary>
     /// Shader container file.
     /// </summary>
-    Sdf
+    Sdf,
+    
+    /// <summary>
+    /// Scene or level data.
+    /// </summary>
+    Scene
 }

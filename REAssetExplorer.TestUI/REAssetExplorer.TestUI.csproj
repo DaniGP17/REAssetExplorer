@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE7\REAssetExplorer.Games.RE7.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.Games.RE8\REAssetExplorer.Games.RE8.csproj" />
+    <ProjectReference Include="..\REAssetExplorer.RenderTest2\REAssetExplorer.RenderTest2.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\FileLists\*.json" LinkBase="FileLists\" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\fonts\DinNextLTW04Light.ttf" />
+    <Resource Include="Assets\fonts\DINBold.ttf" />
+    <Resource Include="Assets\fonts\DINRegularAlternate.ttf" />
+    <Resource Include="Assets\fonts\DINMediumAlternate.ttf" />
+    <Resource Include="Assets\img\re_engine.jpg" />
+    <Resource Include="Assets\img\*.png" />
+    <Resource Include="Assets\img\*.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" Version="2.1.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
+    <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
+    <PackageReference Include="SharpVectors.Reloaded" Version="1.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Dependencies\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Dependencies" />
+  </ItemGroup>
+
+</Project>

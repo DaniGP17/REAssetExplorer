@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using REAssetExplorer.Core.Common;
+using REAssetExplorer.Core.Assets;
+using REAssetExplorer.Core.Assets.Models;
 using REAssetExplorer.Core.Pak;
+using REAssetExplorer.Core.Rsz;
 using REAssetExplorer.Games.RE7;
 using REAssetExplorer.Games.RE8;
 using REAssetExplorer.RenderTest2.Scene;
-
 namespace REAssetExplorer.RenderTest2;
 
 public class RenderWindow : Form
 {
     private Renderer? _renderer;
     private Camera? _camera;
-    
+
     // Input state
     private HashSet<Keys> _pressedKeys = new HashSet<Keys>();
     private EventHandler? _idleHandler;
@@ -65,28 +66,28 @@ public class RenderWindow : Form
         // Load pak files asynchronously to avoid blocking the UI thread
         Dictionary<string, PakFile>? pakFiles = null;
         RE7Provider? provider = null;
-        MaterialsCache? materialsCache = null;
 
         try
         {
             provider = new RE7Provider();
-            provider.GameDirectory = "D:\\SteamLibrary\\steamapps\\common\\RESIDENT EVIL 7 biohazard";
-            
+            provider.GameDirectory = "G:\\SteamLibrary\\steamapps\\common\\RESIDENT EVIL 7 biohazard";
+            //provider.GameDirectory = "D:\\SteamLibrary\\steamapps\\common\\Resident Evil Village BIOHAZARD VILLAGE";
+
+            var rszDb = new RszTypeDb();
+            rszDb.LoadFromFile("D:\\Projects\\REAssetExplorer\\FileLists\\rszre7.json");
+            RszRegistry.Current = rszDb;
+
             var pakLoader = new PakLoader();
             var pakResult = await pakLoader.LoadPakFilesAsync(
                 provider,
                 "D:\\Projects\\REAssetExplorer\\FileLists\\re7.txt",
-                cachePath: "Cache/Materials.bin",
-                loadMaterials: true,
                 onProgress: Console.WriteLine
             );
-            
+
             if (pakResult.IsSuccess)
             {
                 pakFiles = pakResult.Value;
-                materialsCache = pakLoader.GetMaterialsCache();
                 Console.WriteLine($"Loaded {pakFiles.Count} PAK files");
-                Console.WriteLine($"Materials cache: {materialsCache?.Count ?? 0} materials");
             }
             else
             {
@@ -112,18 +113,30 @@ public class RenderWindow : Form
         }
 
         // Now create renderer and camera after PAK files are loaded
-        _renderer = new Renderer(pakFiles, provider, materialsCache);
+        _renderer = new Renderer(pakFiles, provider);
         _camera = new Camera(ref _pressedKeys);
         _renderer.SetCamera(_camera);
         
         bool success = _renderer.Initialize(Handle, ClientSize.Width, ClientSize.Height);
-        
+
         if (!success)
         {
             MessageBox.Show("Failed to initialize renderer", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Close();
             return;
         }
+
+        /*var assetLoader = new AssetLoader(
+            new RE7Provider(),
+            pakFiles
+        );
+
+        var result = assetLoader.LoadAsset<SceneData>(
+            "scenes/master.scn.20",
+            loadDependencies: true
+        );
+        Console.WriteLine("Scene loading result: " + (result.IsSuccess ? "Success" : $"Failed - {result.Error}"));
+        _renderer.SetSceneData(result.Value);*/
     }
 
     protected override void Dispose(bool disposing)
@@ -280,22 +293,22 @@ public class RenderWindow : Form
             Cursor.Hide();
         }
     }
-    
+
     private void OnMouseMove(object? sender, MouseEventArgs e)
     {
         if (_camera?.IsRotating == true)
         {
             int deltaX = e.X - _camera.LastMousePos.X;
             int deltaY = e.Y - _camera.LastMousePos.Y;
-            
+
             _camera.HandleMouseRotation(deltaX, deltaY);
-            
+
             Point center = new Point(ClientSize.Width / 2, ClientSize.Height / 2);
             _camera.UpdateLastMousePos(center);
             Cursor.Position = PointToScreen(center);
         }
     }
-    
+
     private void OnMouseUp(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Right && _camera != null)
@@ -304,18 +317,18 @@ public class RenderWindow : Form
             Cursor.Show();
         }
     }
-    
+
     private void OnMouseWheel(object? sender, MouseEventArgs e)
     {
         _camera?.HandleMouseWheel(e.Delta);
     }
-    
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         _pressedKeys.Add(e.KeyCode);
         e.Handled = true;
     }
-    
+
     private void OnKeyUp(object? sender, KeyEventArgs e)
     {
         _pressedKeys.Remove(e.KeyCode);

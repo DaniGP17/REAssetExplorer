@@ -547,3 +547,106 @@ public class RE7SdfReaderTests : IClassFixture<PakFileFixture>
         Console.WriteLine($"\nSummary: {successCount} SDF read, {emptyNameCount} with empty names");
     }
 }
+
+public class RE7SceneReaderTests : IClassFixture<PakFileFixture>
+{
+    private readonly PakFileFixture _fixture;
+    private readonly RE7SceneReader _reader;
+    
+    public RE7SceneReaderTests(PakFileFixture fixture)
+    {
+        _fixture = fixture;
+        _reader = new RE7SceneReader();
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    [SlowTest]
+    public void Read_WithValidSceneile_ReturnsSuccess()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        var scnEntry = pakFile.Entries.FirstOrDefault(e => 
+            e.FilePath?.Contains("environment/scene/chapter1/c01_2f.scn.20") == true);
+        
+        if (scnEntry.FilePath == null)
+        {
+            return;
+        }
+        
+        var data = _fixture.ExtractFile(pakFile, scnEntry);
+        var result = _reader.Read(data!, scnEntry.FilePath);
+
+        result.IsSuccess.Should().BeTrue(result.Exception?.ToString() ?? result.Error ?? "unknown error");
+        result.Value.Should().NotBeNull();
+        
+        if (result.IsSuccess)
+        {
+            Console.WriteLine($"Scene loaded: {scnEntry.FilePath}");
+            Console.WriteLine($"Data size: {data!.Length} bytes");
+        }
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    [SlowTest]
+    public void Read_AllSceneFiles_ShouldSucceed()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        
+        var summary = AssetReaderTestHelper.TestAllAssetsOfType<RE7SceneReader, SceneData>(
+            _fixture,
+            pakFile,
+            ".scn.20",
+            _reader,
+            maxFiles: null
+        );
+        
+        summary.PrintReport("RE7 Scene");
+        
+        AssetReaderTestHelper.AssertMinimumSuccessRate(summary, 100, "Scene");
+    }
+    
+    [SkipIfRE7NotInstalled]
+    [IntegrationTest]
+    public void Read_SceneFiles_ShouldHaveValidStructure()
+    {
+        var pakFile = _fixture.RE7PakFile!;
+        var scnEntries = pakFile.Entries
+            .Where(e => e.FilePath?.EndsWith(".scn.20") == true)
+            .Take(10)
+            .ToList();
+        
+        if (scnEntries.Count == 0)
+        {
+            return;
+        }
+        
+        int successCount = 0;
+        int emptyNameCount = 0;
+        
+        foreach (var entry in scnEntries)
+        {
+            var data = _fixture.ExtractFile(pakFile, entry);
+            var result = _reader.Read(data!, entry.FilePath);
+            
+            if (result.IsSuccess)
+            {
+                result.Value.Should().NotBeNull();
+                successCount++;
+                
+                if (string.IsNullOrEmpty(result.Value!.Name))
+                {
+                    emptyNameCount++;
+                    Console.WriteLine($" {entry.FilePath}: (empty name)");
+                }
+                else
+                {
+                    Console.WriteLine($" {entry.FilePath}: {result.Value.Name}");
+                }
+            }
+        }
+        
+        successCount.Should().BeGreaterThan(0, "At least some Scene files should be readable");
+        Console.WriteLine($"\nSummary: {successCount} scenes read, {emptyNameCount} with empty names");
+    }
+}

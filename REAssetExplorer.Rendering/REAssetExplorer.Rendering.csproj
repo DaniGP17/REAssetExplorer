@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpDX" Version="4.2.0" />
+    <PackageReference Include="SharpDX.D3DCompiler" Version="4.2.0" />
+    <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
+    <PackageReference Include="SharpDX.DXGI" Version="4.2.0" />
+    <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
+    <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+    <PackageReference Include="AssimpNet" Version="5.0.0-beta1" />
+    <PackageReference Include="BCnEncoder.Net" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\REAssetExplorer.Core\REAssetExplorer.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Copiar shaders compilados a la carpeta de salida -->
+  <Target Name="CopyCompiledShaders" AfterTargets="Build">
+    <ItemGroup>
+      <CompiledShaders Include="..\REAssetExplorer.Shaders\$(Platform)\$(Configuration)\Shaders\*.cso" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CompiledShaders)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" />
+    <Message Text="Copied compiled shaders to $(OutDir)Shaders" Importance="high" />
+  </Target>
+
+</Project>

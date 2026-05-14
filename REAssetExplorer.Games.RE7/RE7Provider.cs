@@ -34,10 +34,12 @@ public class RE7Provider : IGameProvider
         "dlc/re_dlc_stm_530610.pak",
         "dlc/re_dlc_stm_530611.pak",*/
     };
+
+    public string FilesPath => "natives\\stm\\";
     
     /// <inheritdoc/>
     public IPakReader PakReader => _pakReader;
-    
+
     /// <inheritdoc/>
     public IAssetReaderRegistry AssetReaders => _assetReaders;
     
@@ -59,6 +61,8 @@ public class RE7Provider : IGameProvider
         registry.RegisterReader(new RE7AIMapReader());
         registry.RegisterReader(new RE7BankReader());
         registry.RegisterReader(new RE7SdfReader());
+        registry.RegisterReader(new RE7SceneReader());
+        registry.RegisterReader(new RE7RSZReader());
         
         return registry;
     }

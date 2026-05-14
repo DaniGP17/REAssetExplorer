@@ -17,6 +17,8 @@ public interface IGameProvider
     /// Display name of the game.
     /// </summary>
     string Name { get; }
+
+    string RszFile => $"rsz{Id}.json";
     
     /// <summary>
     /// Steam App ID for locating the game via Steam.
@@ -27,6 +29,8 @@ public interface IGameProvider
     /// Relative paths to PAK files within the game directory.
     /// </summary>
     string[] PaksLocations { get; }
+    
+    string FilesPath { get; }
     
     /// <summary>
     /// Reader implementation for this game's PAK format.

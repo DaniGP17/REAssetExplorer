@@ -169,8 +169,7 @@ public partial class MeshViewerWindow : FluentWindow
             Console.WriteLine($"LoadMeshAsync: Creating AssetLoader with {GameManager.LoadedPakFiles.Count} PAK files");
             var assetLoader = new AssetLoader(
                 gameProvider,
-                GameManager.LoadedPakFiles.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
-                GameManager.MaterialsCache
+                GameManager.LoadedPakFiles.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
             );
             Console.WriteLine($"LoadMeshAsync: AssetLoader created successfully");
             

@@ -296,7 +296,7 @@ public class Grid : IDisposable
                     DepthFunc = ComparisonFunction.LessEqual,
                     StencilEnable = false
                 },
-                DepthStencilFormat = Format.D32_Float,
+                DepthStencilFormat = Format.D24_UNorm_S8_UInt,
                 SampleMask = uint.MaxValue,
                 RenderTargetFormats = new[] { Format.R8G8B8A8_UNorm },
                 SampleDescription = new SampleDescription(1, 0)

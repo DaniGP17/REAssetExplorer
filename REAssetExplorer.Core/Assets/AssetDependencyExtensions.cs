@@ -1,5 +1,4 @@
 using REAssetExplorer.Core.Assets.Models;
-using REAssetExplorer.Core.Common;
 
 namespace REAssetExplorer.Core.Assets;
 
@@ -8,52 +7,6 @@ namespace REAssetExplorer.Core.Assets;
 /// </summary>
 public static class AssetDependencyExtensions
 {
-    /// <summary>
-    /// Resolves material file paths using the materials cache.
-    /// </summary>
-    /// <param name="asset">The asset with dependencies to resolve.</param>
-    /// <param name="materialsCache">The materials cache to use for resolution.</param>
-    /// <returns>The number of dependencies that were successfully resolved.</returns>
-    public static int ResolveMaterialPaths(this AssetData asset, MaterialsCache materialsCache)
-    {
-        ArgumentNullException.ThrowIfNull(asset);
-        ArgumentNullException.ThrowIfNull(materialsCache);
-        
-        int resolvedCount = 0;
-        
-        foreach (var dependency in asset.Dependencies)
-        {
-            // Skip if already has a file path
-            if (!string.IsNullOrEmpty(dependency.FilePath))
-            {
-                continue;
-            }
-            
-            // Skip if doesn't need path resolution
-            if (!dependency.Metadata.TryGetValue("NeedsPathResolution", out var needsResolution) 
-                || !(bool)needsResolution)
-            {
-                continue;
-            }
-            
-            // Try to resolve the material path
-            if (dependency.AssetType == AssetType.Material 
-                && dependency.Metadata.TryGetValue("MaterialName", out var materialNameObj)
-                && materialNameObj is string materialName)
-            {
-                if (materialsCache.TryGetMaterial(materialName, out var materialPath) 
-                    && !string.IsNullOrEmpty(materialPath))
-                {
-                    dependency.FilePath = materialPath;
-                    dependency.Metadata["NeedsPathResolution"] = false;
-                    resolvedCount++;
-                }
-            }
-        }
-        
-        return resolvedCount;
-    }
-    
     /// <summary>
     /// Gets all dependencies of a specific type.
     /// </summary>

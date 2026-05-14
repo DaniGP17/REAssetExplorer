@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq;
 using REAssetExplorer.Core.Pak;
 
@@ -97,7 +98,7 @@ public abstract class AssetData
     /// Key: FilePath of the dependency
     /// Value: The loaded AssetData object
     /// </summary>
-    public Dictionary<string, AssetData> ResolvedDependencies { get; set; } = new Dictionary<string, AssetData>();
+    public ConcurrentDictionary<string, AssetData> ResolvedDependencies { get; set; } = new ConcurrentDictionary<string, AssetData>(StringComparer.Ordinal);
     
     /// <summary>
     /// Gets a resolved dependency by its file path.
