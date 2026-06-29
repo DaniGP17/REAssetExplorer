@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        x:Class="REAssetExplorer.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="RE Asset Explorer"
+        Width="1720" Height="1000" MinWidth="1100" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="30"
+        WindowDecorations="BorderOnly">
+
+  <DockPanel>
+
+    <Grid DockPanel.Dock="Top" Height="30" Background="{DynamicResource TitleBarBrush}"
+          ColumnDefinitions="Auto,*,Auto"
+          chrome:WindowDecorationProperties.ElementRole="TitleBar">
+      <Menu Classes="main" VerticalAlignment="Center" Margin="4,0,0,0"
+            chrome:WindowDecorationProperties.ElementRole="User">
+        <MenuItem Header="_File">
+          <MenuItem Header="_Open" Command="{Binding OpenSelectedCommand}" InputGesture="Enter" />
+          <MenuItem Header="_Extract..." Command="{Binding ExtractSelectedCommand}" />
+          <MenuItem Header="_Save Edited Scenes..." Command="{Binding SaveEditedScenesCommand}" />
+          <Separator />
+          <MenuItem Header="_Remount Paks" Command="{Binding ReloadGameCommand}" />
+          <MenuItem Header="_Game Folder..." Command="{Binding ChangeGameFolderCommand}" />
+          <Separator />
+          <MenuItem Header="E_xit" Click="OnExitClick" />
+        </MenuItem>
+        <MenuItem Header="_Window">
+          <MenuItem Header="_Hierarchy" Command="{Binding ShowToolCommand}" CommandParameter="Hierarchy" />
+          <MenuItem Header="_Viewport" Command="{Binding ShowToolCommand}" CommandParameter="Viewport" />
+          <MenuItem Header="_Inspector" Command="{Binding ShowToolCommand}" CommandParameter="Inspector" />
+          <MenuItem Header="_Asset Browser" Command="{Binding ShowToolCommand}" CommandParameter="AssetBrowser" />
+          <MenuItem Header="_Log" Command="{Binding ShowToolCommand}" CommandParameter="Log" />
+          <Separator />
+          <MenuItem Header="_Reset Layout" Command="{Binding ResetLayoutCommand}" />
+        </MenuItem>
+      </Menu>
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <Button Theme="{StaticResource CaptionButtonTheme}" Click="OnMinimizeClick"
+                chrome:WindowDecorationProperties.ElementRole="MinimizeButton">
+          <PathIcon Classes="small" Data="{StaticResource IconWindowMin}" />
+        </Button>
+        <Button Theme="{StaticResource CaptionButtonTheme}" Click="OnMaximizeClick"
+                chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
+          <Panel>
+            <PathIcon x:Name="MaximizeIcon" Classes="small" Data="{StaticResource IconWindowMax}" />
+            <PathIcon x:Name="RestoreIcon" Classes="small" Data="{StaticResource IconWindowRestore}" IsVisible="False" />
+          </Panel>
+        </Button>
+        <Button Theme="{StaticResource CaptionButtonTheme}" Classes="close" Click="OnCloseClick"
+                chrome:WindowDecorationProperties.ElementRole="CloseButton">
+          <PathIcon Classes="small" Data="{StaticResource IconWindowClose}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal" Spacing="1">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ReloadGameCommand}" ToolTip.Tip="Remount paks">
+            <PathIcon Data="{StaticResource IconRefresh}" />
+          </Button>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ExtractSelectedCommand}" ToolTip.Tip="Extract">
+            <PathIcon Data="{StaticResource IconExtract}" />
+          </Button>
+          <Border Classes="separator" />
+          <TextBlock Classes="label" Text="Target:" />
+          <ComboBox Width="190" ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" IsEnabled="{Binding !IsBusy}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:GameOption">
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ChangeGameFolderCommand}"
+                  ToolTip.Tip="Game folder: choose where this game is installed">
+            <PathIcon Data="{StaticResource IconFolderOpen}" />
+          </Button>
+        </StackPanel>
+        <ProgressBar DockPanel.Dock="Right" HorizontalAlignment="Right" Width="120" Margin="0,0,6,0"
+                     IsIndeterminate="True" IsVisible="{Binding IsBusy}" />
+      </DockPanel>
+    </Border>
+
+    <DockControl Layout="{Binding Layout}" Margin="2" />
+  </DockPanel>
+</Window>
