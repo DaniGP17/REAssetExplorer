@@ -1,0 +1,154 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             xmlns:m="using:REAssetExplorer.Desktop.Models"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.AssetBrowserView"
+             x:DataType="d:AssetBrowserTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Main.Browser.GoBackCommand}" ToolTip.Tip="Back">
+            <PathIcon Data="{StaticResource IconArrowLeft}" />
+          </Button>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Main.Browser.GoForwardCommand}" ToolTip.Tip="Forward">
+            <PathIcon Data="{StaticResource IconArrowRight}" />
+          </Button>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Main.Browser.GoUpCommand}" ToolTip.Tip="Parent folder">
+            <PathIcon Data="{StaticResource IconArrowUp}" />
+          </Button>
+        </StackPanel>
+        <Border Margin="4,0,0,0" Height="20" Background="{DynamicResource InputBrush}"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1">
+          <ItemsControl ItemsSource="{Binding Main.Browser.Breadcrumb}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="m:AssetNode">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="/" Classes="dim" VerticalAlignment="Center" IsVisible="{Binding !IsTopLevel}" />
+                  <Button Theme="{StaticResource ToolButtonTheme}" Width="NaN" Padding="4,0" Height="18" Click="OnBreadcrumbClick">
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}" />
+                  </Button>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+      </DockPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Height="20" Padding="8,0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+      <TextBlock Text="{Binding Main.Browser.TotalText}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center" />
+    </Border>
+
+    <Grid ColumnDefinitions="270,3,*">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Height="24" Padding="6,0,2,0" Background="{DynamicResource ToolbarBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="Folders" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Theme="{StaticResource ToolButtonTheme}" Command="{Binding Main.Browser.CollapseFoldersCommand}"
+                    ToolTip.Tip="Collapse all">
+              <PathIcon Data="{StaticResource IconCollapseAll}" />
+            </Button>
+          </Grid>
+        </Border>
+        <ListBox x:Name="FolderList" Classes="flat" ItemsSource="{Binding Main.Browser.FolderRows}"
+                 SelectedItem="{Binding Main.Browser.SelectedFolderRow}" ItemContainerTheme="{StaticResource RowItemTheme}"
+                 DoubleTapped="OnFolderDoubleTapped">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="m:AssetNode">
+              <Grid Height="18" ColumnDefinitions="14,18,*" Margin="{Binding Indent}" Background="Transparent">
+                <Border Background="Transparent" Tapped="OnFolderChevronTapped" IsVisible="{Binding HasSubfolders}">
+                  <Panel>
+                    <PathIcon Classes="small" Data="{StaticResource IconTriangleRight}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding !IsExpanded}" />
+                    <PathIcon Classes="small" Data="{StaticResource IconTriangleDown}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding IsExpanded}" />
+                  </Panel>
+                </Border>
+                <PathIcon Grid.Column="1" Classes="small" Data="{StaticResource IconFolder}" Foreground="{DynamicResource FolderIconBrush}" />
+                <TextBlock Grid.Column="2" Text="{Binding Name}" Margin="3,0,0,0" VerticalAlignment="Center" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+
+      <DockPanel Grid.Column="2">
+        <Border DockPanel.Dock="Top" Height="24" Padding="3,2" Background="{DynamicResource ToolbarBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+          <DockPanel>
+            <ComboBox DockPanel.Dock="Right" Width="150" Margin="3,0,0,0"
+                      ItemsSource="{Binding Main.Browser.Filters}" SelectedItem="{Binding Main.Browser.SelectedFilter}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:KindFilter">
+                  <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBox PlaceholderText="Search" Text="{Binding Main.Browser.SearchText}" />
+          </DockPanel>
+        </Border>
+        <Border DockPanel.Dock="Top" Height="20" Background="{DynamicResource SectionBrush}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,120,90,110" Margin="22,0,0,0">
+            <Button Theme="{StaticResource ColumnHeaderTheme}" Command="{Binding Main.Browser.SortByCommand}"
+                    CommandParameter="{x:Static vm:AssetSortColumn.Name}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Name" />
+                <PathIcon Width="8" Height="8" Data="{Binding Main.Browser.SortArrow}"
+                          IsVisible="{Binding Main.Browser.IsSortedByName}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="1" Theme="{StaticResource ColumnHeaderTheme}" Command="{Binding Main.Browser.SortByCommand}"
+                    CommandParameter="{x:Static vm:AssetSortColumn.Type}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Type" />
+                <PathIcon Width="8" Height="8" Data="{Binding Main.Browser.SortArrow}"
+                          IsVisible="{Binding Main.Browser.IsSortedByType}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Theme="{StaticResource ColumnHeaderTheme}" Command="{Binding Main.Browser.SortByCommand}"
+                    CommandParameter="{x:Static vm:AssetSortColumn.Size}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Size" />
+                <PathIcon Width="8" Height="8" Data="{Binding Main.Browser.SortArrow}"
+                          IsVisible="{Binding Main.Browser.IsSortedBySize}" />
+              </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Theme="{StaticResource ColumnHeaderTheme}" Command="{Binding Main.Browser.SortByCommand}"
+                    CommandParameter="{x:Static vm:AssetSortColumn.Version}">
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="Version" />
+                <PathIcon Width="8" Height="8" Data="{Binding Main.Browser.SortArrow}"
+                          IsVisible="{Binding Main.Browser.IsSortedByVersion}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Border>
+        <ListBox x:Name="AssetList" Classes="flat" ItemsSource="{Binding Main.Browser.ListItems}"
+                 ItemContainerTheme="{StaticResource RowItemTheme}"
+                 SelectionChanged="OnAssetListSelectionChanged" DoubleTapped="OnAssetListDoubleTapped">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="m:AssetNode">
+              <Grid Height="18" ColumnDefinitions="26,*,120,90,110">
+                <PathIcon Classes="small" Data="{Binding Icon}" Foreground="{Binding KindBrush}" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding KindLabel}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                <TextBlock Grid.Column="3" Text="{Binding SizeText}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+                <TextBlock Grid.Column="4" Text="{Binding Version}" Classes="dim" VerticalAlignment="Center" Margin="4,0,0,0" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,298 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+        xmlns:c="using:REAssetExplorer.Desktop.Controls"
+        xmlns:m="using:REAssetExplorer.Desktop.Models"
+        xmlns:chrome="using:Avalonia.Controls.Chrome"
+        x:Class="REAssetExplorer.Desktop.Views.AssetEditorWindow"
+        x:DataType="vm:AssetEditorViewModel"
+        Title="{Binding Title}"
+        Width="1400" Height="860" MinWidth="800" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="30"
+        WindowDecorations="BorderOnly">
+
+  <DockPanel>
+
+    <Grid DockPanel.Dock="Top" Height="30" Background="{DynamicResource TitleBarBrush}"
+          ColumnDefinitions="Auto,*,Auto"
+          chrome:WindowDecorationProperties.ElementRole="TitleBar">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+        <PathIcon Classes="small" Data="{Binding Icon}" Foreground="{Binding KindBrush}" />
+        <TextBlock Text="{Binding Title}" Margin="6,0,0,0" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextBrightBrush}" />
+        <TextBlock Text="{Binding EditorName}" Margin="8,0,0,0" VerticalAlignment="Center" Classes="dim" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal">
+        <Button Theme="{StaticResource CaptionButtonTheme}" Click="OnMinimizeClick"
+                chrome:WindowDecorationProperties.ElementRole="MinimizeButton">
+          <PathIcon Classes="small" Data="{StaticResource IconWindowMin}" />
+        </Button>
+        <Button Theme="{StaticResource CaptionButtonTheme}" Click="OnMaximizeClick"
+                chrome:WindowDecorationProperties.ElementRole="MaximizeButton">
+          <Panel>
+            <PathIcon x:Name="MaximizeIcon" Classes="small" Data="{StaticResource IconWindowMax}" />
+            <PathIcon x:Name="RestoreIcon" Classes="small" Data="{StaticResource IconWindowRestore}" IsVisible="False" />
+          </Panel>
+        </Button>
+        <Button Theme="{StaticResource CaptionButtonTheme}" Classes="close" Click="OnCloseClick"
+                chrome:WindowDecorationProperties.ElementRole="CloseButton">
+          <PathIcon Classes="small" Data="{StaticResource IconWindowClose}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <ContentControl DockPanel.Dock="Top" Content="{Binding Player}"
+                    IsVisible="{Binding Player, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:AudioPlayerViewModel">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+              <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="1">
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding PlayCommand}"
+                          ToolTip.Tip="Play the selected sound (double-click or Space)">
+                    <PathIcon Data="{StaticResource IconPlay}" />
+                  </Button>
+                  <ToggleButton Theme="{StaticResource ToolToggleTheme}" Command="{Binding PauseCommand}"
+                                IsChecked="{Binding IsPaused, Mode=OneWay}" ToolTip.Tip="Pause">
+                    <PathIcon Data="{StaticResource IconPause}" />
+                  </ToggleButton>
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding StopCommand}" ToolTip.Tip="Stop">
+                    <PathIcon Data="{StaticResource IconStop}" />
+                  </Button>
+                  <Border Classes="separator" />
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ExportCommand}" ToolTip.Tip="Export as WAV">
+                    <PathIcon Data="{StaticResource IconExtract}" />
+                  </Button>
+                  <Border Classes="separator" />
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right" Classes="dim mono" FontSize="11" Text="{Binding TimeText}"
+                           VerticalAlignment="Center" Margin="8,0,4,0" />
+                <TextBlock Text="{Binding NowPlaying}" VerticalAlignment="Center" Margin="4,0,8,0"
+                           TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+            </Border>
+            <Border Height="112" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding ShowsWaveform}">
+              <Panel>
+                <c:WaveformView Peaks="{Binding Waveform}" Channels="{Binding WaveformChannels}"
+                                Position="{Binding Position}" Duration="{Binding Duration}"
+                                SeekCommand="{Binding SeekCommand}" />
+                <ProgressBar Width="160" VerticalAlignment="Center" HorizontalAlignment="Center"
+                             IsIndeterminate="True" IsVisible="{Binding IsDecoding}" />
+              </Panel>
+            </Border>
+          </DockPanel>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+
+    <ContentControl DockPanel.Dock="Top" Content="{Binding Playback}"
+                    IsVisible="{Binding Playback, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:EffectPlaybackViewModel">
+          <Border Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+            <DockPanel>
+              <StackPanel Orientation="Horizontal" Spacing="1">
+                <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding IsPaused}"
+                              ToolTip.Tip="Pause">
+                  <PathIcon Data="{StaticResource IconPause}" />
+                </ToggleButton>
+                <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding RestartCommand}"
+                        ToolTip.Tip="Restart the effect">
+                  <PathIcon Data="{StaticResource IconReset}" />
+                </Button>
+                <Border Classes="separator" />
+                <TextBlock Classes="label" Text="Speed:" />
+                <ComboBox Width="76" ItemsSource="{Binding Speeds}" SelectedItem="{Binding Speed}" />
+              </StackPanel>
+              <TextBlock DockPanel.Dock="Right" Classes="dim mono" FontSize="11" Text="{Binding StatusText}"
+                         VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,4,0" />
+            </DockPanel>
+          </Border>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+
+    <ContentControl DockPanel.Dock="Top" Content="{Binding ImageTools}"
+                    IsVisible="{Binding ImageTools, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:ImageToolbarViewModel">
+          <Border Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+            <DockPanel>
+              <StackPanel Orientation="Horizontal" Spacing="1">
+                <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding ShowRed}" ToolTip.Tip="Red channel">
+                  <TextBlock Text="R" FontWeight="Bold" Foreground="#E06060" />
+                </ToggleButton>
+                <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding ShowGreen}" ToolTip.Tip="Green channel">
+                  <TextBlock Text="G" FontWeight="Bold" Foreground="#70C060" />
+                </ToggleButton>
+                <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding ShowBlue}" ToolTip.Tip="Blue channel">
+                  <TextBlock Text="B" FontWeight="Bold" Foreground="#6090E0" />
+                </ToggleButton>
+                <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding ShowAlpha}"
+                              ToolTip.Tip="Alpha channel (blends over a checkerboard; alone it shows as gray)">
+                  <TextBlock Text="A" FontWeight="Bold" Foreground="#C8C8C8" />
+                </ToggleButton>
+                <StackPanel Orientation="Horizontal" Spacing="1" IsVisible="{Binding IsFlipbook}">
+                  <Border Classes="separator" />
+                  <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding IsPlaying}"
+                                ToolTip.Tip="Play the selected sequence">
+                    <PathIcon Data="{StaticResource IconPlay}" />
+                  </ToggleButton>
+                  <TextBlock Classes="label" Text="Rate:" />
+                  <ComboBox Width="84" ItemsSource="{Binding Rates}" SelectedItem="{Binding Rate}" />
+                </StackPanel>
+              </StackPanel>
+              <TextBlock DockPanel.Dock="Right" Classes="dim mono" FontSize="11" Text="{Binding StatusText}"
+                         VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,4,0" />
+            </DockPanel>
+          </Border>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+
+    <ContentControl DockPanel.Dock="Top" Content="{Binding MovieTools}"
+                    IsVisible="{Binding MovieTools, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:MoviePlayerViewModel">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+              <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="1">
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding TogglePlayCommand}"
+                          IsEnabled="{Binding IsLoaded}" ToolTip.Tip="Play / Pause">
+                    <Panel>
+                      <PathIcon Data="{StaticResource IconPlay}" IsVisible="{Binding IsPaused}" />
+                      <PathIcon Data="{StaticResource IconPause}" IsVisible="{Binding IsPlaying}" />
+                    </Panel>
+                  </Button>
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding RestartCommand}"
+                          IsEnabled="{Binding IsLoaded}" ToolTip.Tip="Play from the start">
+                    <PathIcon Data="{StaticResource IconReset}" />
+                  </Button>
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right" Classes="dim mono" FontSize="11" Text="{Binding TimeText}"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,4,0" />
+              </DockPanel>
+            </Border>
+            <Border Height="36" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IsLoaded}">
+              <c:WaveformView Position="{Binding Position}" Duration="{Binding Duration}"
+                              SeekCommand="{Binding SeekCommand}" />
+            </Border>
+          </DockPanel>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+
+    <ContentControl DockPanel.Dock="Top" Content="{Binding AnimationTools}"
+                    IsVisible="{Binding AnimationTools.IsAvailable, FallbackValue=False}">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="vm:AnimationToolbarViewModel">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,1,0,1" Padding="4,3">
+              <DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="1">
+                  <TextBlock Classes="label" Text="Character:" />
+                  <ComboBox Width="190" ItemsSource="{Binding Characters}" SelectedItem="{Binding Character}"
+                            PlaceholderText="{Binding CharacterStatus}"
+                            ToolTip.Tip="{Binding Character.Tip, FallbackValue='The meshes of the character this one belongs to animate with it'}" />
+                  <Button Theme="{StaticResource ToolButtonTheme}" ToolTip.Tip="Add another mesh to the character (it follows this skeleton)">
+                    <Button.Flyout>
+                      <Flyout Placement="BottomEdgeAlignedLeft" Opening="OnPartPickerOpening">
+                        <DockPanel Width="460" Height="400">
+                          <TextBox DockPanel.Dock="Top" PlaceholderText="Search meshes" Text="{Binding PartFilter}" />
+                          <TextBlock DockPanel.Dock="Bottom" Classes="dim" FontSize="11" Margin="2,4,0,0"
+                                     Text="{Binding PartStatus}" />
+                          <ListBox Classes="flat" Margin="0,4,0,0" ItemsSource="{Binding PartItems}"
+                                   ItemContainerTheme="{StaticResource RowItemTheme}"
+                                   Tapped="OnPartPickerTapped" KeyDown="OnPartPickerKeyDown">
+                            <ListBox.ItemTemplate>
+                              <DataTemplate x:DataType="m:AssetNode">
+                                <Grid Height="20" ColumnDefinitions="20,Auto,*" ToolTip.Tip="{Binding FullPath}">
+                                  <PathIcon Classes="small" Data="{Binding Icon}" Foreground="{Binding KindBrush}" />
+                                  <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="2" Text="{Binding FolderPath}" Classes="dim" FontSize="11"
+                                             Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                              </DataTemplate>
+                            </ListBox.ItemTemplate>
+                          </ListBox>
+                        </DockPanel>
+                      </Flyout>
+                    </Button.Flyout>
+                    <PathIcon Data="{StaticResource IconAdd}" />
+                  </Button>
+                  <Border Classes="separator" />
+                  <TextBlock Classes="label" Text="Animation:" />
+                  <Button Width="220" Padding="6,0" Height="22" HorizontalContentAlignment="Left"
+                          ToolTip.Tip="{Binding Motlist.FullPath, FallbackValue='Choose a motion list'}">
+                    <Button.Flyout>
+                      <Flyout Placement="BottomEdgeAlignedLeft" Opening="OnMotlistPickerOpening">
+                        <DockPanel Width="460" Height="400">
+                          <TextBox DockPanel.Dock="Top" PlaceholderText="Search" Text="{Binding PickerFilter}" />
+                          <TextBlock DockPanel.Dock="Bottom" Classes="dim" FontSize="11" Margin="2,4,0,0"
+                                     Text="{Binding PickerStatus}" />
+                          <ListBox Classes="flat" Margin="0,4,0,0" ItemsSource="{Binding PickerItems}"
+                                   ItemContainerTheme="{StaticResource RowItemTheme}"
+                                   Tapped="OnMotlistPickerTapped" KeyDown="OnMotlistPickerKeyDown">
+                            <ListBox.ItemTemplate>
+                              <DataTemplate x:DataType="m:AssetNode">
+                                <Grid Height="20" ColumnDefinitions="20,Auto,*" ToolTip.Tip="{Binding FullPath}">
+                                  <PathIcon Classes="small" Data="{Binding Icon}" Foreground="{Binding KindBrush}" />
+                                  <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="2" Text="{Binding FolderPath}" Classes="dim" FontSize="11"
+                                             Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                              </DataTemplate>
+                            </ListBox.ItemTemplate>
+                          </ListBox>
+                        </DockPanel>
+                      </Flyout>
+                    </Button.Flyout>
+                    <TextBlock Text="{Binding MotlistName}" TextTrimming="CharacterEllipsis" />
+                  </Button>
+                  <ComboBox Width="240" Margin="3,0,0,0" ItemsSource="{Binding Motions}"
+                            SelectedItem="{Binding SelectedMotion}" PlaceholderText="Motion" />
+                  <Border Classes="separator" />
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding TogglePlayCommand}"
+                          IsEnabled="{Binding IsPlaybackActive}" ToolTip.Tip="Play / Pause">
+                    <Panel>
+                      <PathIcon Data="{StaticResource IconPlay}" IsVisible="{Binding IsPaused}" />
+                      <PathIcon Data="{StaticResource IconPause}" IsVisible="{Binding IsPlaying}" />
+                    </Panel>
+                  </Button>
+                  <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding StopCommand}"
+                          IsEnabled="{Binding IsPlaybackActive}" ToolTip.Tip="Stop (bind pose)">
+                    <PathIcon Data="{StaticResource IconStop}" />
+                  </Button>
+                  <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Loop}" ToolTip.Tip="Loop">
+                    <PathIcon Data="{StaticResource IconReset}" />
+                  </ToggleButton>
+                  <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding FollowCharacter}"
+                                ToolTip.Tip="Camera follows the character (Alt + left drag still orbits it; flying the camera turns this off)">
+                    <PathIcon Data="{StaticResource IconFollow}" />
+                  </ToggleButton>
+                  <TextBlock Classes="label" Text="Speed:" />
+                  <ComboBox Width="76" ItemsSource="{Binding Speeds}" SelectedItem="{Binding Speed}" />
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right" Classes="dim mono" FontSize="11" Text="{Binding StatusText}"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,4,0" />
+              </DockPanel>
+            </Border>
+            <Border Height="36" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IsPlaybackActive}">
+              <c:WaveformView Position="{Binding Position}" Duration="{Binding Duration}"
+                              SeekCommand="{Binding SeekCommand}" />
+            </Border>
+          </DockPanel>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+
+    <DockControl Layout="{Binding Layout}" Margin="2" />
+  </DockPanel>
+</Window>

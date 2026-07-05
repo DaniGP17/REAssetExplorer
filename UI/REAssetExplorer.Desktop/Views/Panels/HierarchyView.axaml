@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:m="using:REAssetExplorer.Desktop.Models"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.HierarchyView"
+             x:DataType="d:HierarchyTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Hierarchy.ExpandAllCommand}" ToolTip.Tip="Expand all">
+            <PathIcon Data="{StaticResource IconExpandAll}" />
+          </Button>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Hierarchy.CollapseAllCommand}" ToolTip.Tip="Collapse all">
+            <PathIcon Data="{StaticResource IconCollapseAll}" />
+          </Button>
+        </StackPanel>
+        <TextBox Margin="4,0,0,0" PlaceholderText="Search" Text="{Binding Hierarchy.SearchText}" />
+      </DockPanel>
+    </Border>
+    <ListBox x:Name="HierarchyList" Classes="flat" ItemsSource="{Binding Hierarchy.Rows}" SelectionMode="Multiple"
+             ItemContainerTheme="{StaticResource RowItemTheme}" DoubleTapped="OnHierarchyDoubleTapped">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="m:OutlineNode">
+          <Grid Height="18" ColumnDefinitions="Auto,*" Background="Transparent">
+            <Button Classes="eye" Classes.hidden="{Binding IsHidden}" Classes.hiddenByParent="{Binding HiddenByParent}"
+                    IsVisible="{Binding InScene}" Click="OnEyeClick" ToolTip.Tip="Show or hide in the viewport">
+              <Panel>
+                <PathIcon Classes="small" Data="{StaticResource IconEye}" IsVisible="{Binding !EffectiveHidden}" />
+                <PathIcon Classes="small" Data="{StaticResource IconEyeOff}" IsVisible="{Binding EffectiveHidden}" />
+              </Panel>
+            </Button>
+            <Grid Grid.Column="1" ColumnDefinitions="14,18,*" Margin="{Binding Indent}" Classes.hiddenRow="{Binding EffectiveHidden}">
+              <Border Background="Transparent" Tapped="OnOutlineChevronTapped" IsVisible="{Binding CanExpand}">
+                <Panel>
+                  <PathIcon Classes="small" Data="{StaticResource IconTriangleRight}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding !IsExpanded}" />
+                  <PathIcon Classes="small" Data="{StaticResource IconTriangleDown}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding IsExpanded}" />
+                </Panel>
+              </Border>
+              <PathIcon Grid.Column="1" Classes="small" Data="{Binding Icon}" Foreground="{Binding IconBrush}" />
+              <TextBlock Grid.Column="2" Text="{Binding Name}" FontStyle="{Binding NameStyle}" Foreground="{Binding NameBrush}"
+                         VerticalAlignment="Center" Margin="3,0,0,0" />
+            </Grid>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>
