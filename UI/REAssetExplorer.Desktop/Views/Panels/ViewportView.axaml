@@ -1,0 +1,548 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             xmlns:c="using:REAssetExplorer.Desktop.Controls"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.ViewportView"
+             x:DataType="d:ViewportTool"
+             Background="{DynamicResource PanelBrush}">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ColorField" x:DataType="vm:MaterialParameter">
+      <StackPanel Orientation="Horizontal" Spacing="3">
+        <Button Classes="colorSwatch" Background="{Binding SwatchBrush}" ToolTip.Tip="Pick a color">
+          <Button.Flyout>
+            <Flyout Placement="RightEdgeAlignedTop">
+              <c:ColorPickerPanel Width="236" />
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+        <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ResetCommand}" IsVisible="{Binding IsEdited}"
+                ToolTip.Tip="Reset to the default">
+          <PathIcon Classes="small" Data="{StaticResource IconReset}" Foreground="#D8B04A" />
+        </Button>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="SnapStepItem" x:DataType="vm:SnapStep">
+      <TextBlock Text="{Binding Label}" />
+    </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="StackPanel.options > Grid">
+      <Setter Property="MinHeight" Value="24" />
+    </Style>
+    <Style Selector="StackPanel.options > Grid > TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.options ComboBox">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="StackPanel.options Slider">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
+      <Setter Property="Margin" Value="0,8,0,3" />
+    </Style>
+    <Style Selector="StackPanel.menu > TextBlock.section:nth-child(1)">
+      <Setter Property="Margin" Value="0,0,0,3" />
+    </Style>
+    <Style Selector="StackPanel.menu CheckBox, StackPanel.menu RadioButton">
+      <Setter Property="MinHeight" Value="22" />
+    </Style>
+    <Style Selector="Button.defaults">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.menuButton">
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="Margin" Value="2,0,0,0" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <!-- View: options, camera, view mode, what is shown. -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <Button Theme="{StaticResource ToolButtonTheme}" ToolTip.Tip="Viewport options">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Classes="options menu" Width="310">
+                  <TextBlock Classes="section" Text="Viewport" />
+                  <CheckBox Content="Realtime" IsChecked="{Binding Viewport.Realtime}"
+                            ToolTip.Tip="Off, the viewport redraws only after input or a change" />
+                  <CheckBox Content="Stats" IsChecked="{Binding Viewport.ShowStats}" />
+                  <StackPanel Classes="options" IsVisible="{Binding Viewport.Is3D}">
+                    <TextBlock Classes="section" Text="Image" />
+                    <Grid ColumnDefinitions="88,*">
+                      <TextBlock Text="Anti-aliasing" />
+                      <CheckBox Grid.Column="1" Content="Temporal AA" IsChecked="{Binding Viewport.TemporalAA}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*,46">
+                      <TextBlock Text="Resolution %" />
+                      <Slider Grid.Column="1" Minimum="25" Maximum="200" Value="{Binding Viewport.RenderScale}" />
+                      <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.RenderScale}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*">
+                      <TextBlock Text="Exposure" />
+                      <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportViewModel.ExposureModes}"
+                                SelectedIndex="{Binding Viewport.ExposureMode}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*,46" IsVisible="{Binding Viewport.IsFixedExposure}">
+                      <TextBlock Text="EV" />
+                      <Slider Grid.Column="1" Minimum="-10" Maximum="20" Value="{Binding Viewport.ExposureEv}" />
+                      <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.ExposureEv}" />
+                    </Grid>
+                    <TextBlock Classes="section" Text="Screenshot" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <Button Content="Screenshot" Command="{Binding Viewport.ScreenshotCommand}"
+                              ToolTip.Tip="Saved to Pictures\REAssetExplorer" />
+                      <Button Content="High resolution (2x)" Command="{Binding Viewport.HighResScreenshotCommand}"
+                              ToolTip.Tip="Rendered at twice the viewport size" />
+                    </StackPanel>
+                    <TextBlock Classes="section" Text="Background" />
+                    <Grid ColumnDefinitions="88,*">
+                      <TextBlock Text="Background" />
+                      <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportDisplayViewModel.BackgroundModes}"
+                                SelectedIndex="{Binding Viewport.Display.Background}" />
+                    </Grid>
+                    <StackPanel Classes="options" IsVisible="{Binding Viewport.Display.IsSky}">
+                      <Grid ColumnDefinitions="88,*">
+                        <TextBlock Text="Sky" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Viewport.Display.Skies}"
+                                  SelectedItem="{Binding Viewport.Display.Sky}" MaxDropDownHeight="420">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SkyOption">
+                              <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </Grid>
+                      <Grid ColumnDefinitions="88,*,46">
+                        <TextBlock Text="Intensity" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="4" Value="{Binding Viewport.Display.SkyIntensity}" />
+                        <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.Display.SkyIntensity}" />
+                      </Grid>
+                      <Grid ColumnDefinitions="88,*,46">
+                        <TextBlock Text="Rotation" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="360" Value="{Binding Viewport.Display.SkyRotation}" />
+                        <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.Display.SkyRotation}" />
+                      </Grid>
+                      <Grid ColumnDefinitions="88,*,46">
+                        <TextBlock Text="Blur" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Viewport.Display.SkyBlur}" />
+                        <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.Display.SkyBlur}" />
+                      </Grid>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="88,*" IsVisible="{Binding Viewport.Display.IsSolidColor}">
+                      <TextBlock Text="Color" />
+                      <ContentControl Grid.Column="1" Content="{Binding Viewport.Display.BackgroundColor}"
+                                      ContentTemplate="{StaticResource ColorField}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*" IsVisible="{Binding Viewport.Display.IsGradient}">
+                      <TextBlock Text="Top" />
+                      <ContentControl Grid.Column="1" Content="{Binding Viewport.Display.GradientTop}"
+                                      ContentTemplate="{StaticResource ColorField}" />
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*" IsVisible="{Binding Viewport.Display.IsGradient}">
+                      <TextBlock Text="Bottom" />
+                      <ContentControl Grid.Column="1" Content="{Binding Viewport.Display.GradientBottom}"
+                                      ContentTemplate="{StaticResource ColorField}" />
+                    </Grid>
+                    <Button Classes="defaults" Content="Defaults" Command="{Binding Viewport.Display.ResetBackgroundCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+            <PathIcon Data="{StaticResource IconMenu}" />
+          </Button>
+
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Viewport.Is3D}">
+            <Button Classes="menuButton" ToolTip.Tip="Camera and view">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft" Opened="OnCameraFlyoutOpened">
+                  <StackPanel Classes="options menu" Width="300">
+                    <TextBlock Classes="section" Text="View" />
+                    <Grid ColumnDefinitions="88,*">
+                      <TextBlock Text="Projection" />
+                      <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportViewModel.ViewOptions}"
+                                SelectedItem="{Binding Viewport.View}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="vm:ViewOption">
+                            <TextBlock Text="{Binding Name}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                    <Grid ColumnDefinitions="88,*,46" IsVisible="{Binding Viewport.IsPerspective}">
+                      <TextBlock Text="Field of view" />
+                      <Slider Grid.Column="1" Minimum="20" Maximum="120" Value="{Binding Viewport.FieldOfView}" />
+                      <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.FieldOfView}" />
+                    </Grid>
+                    <Button Content="Frame selection (F)" HorizontalAlignment="Left" Margin="0,4,0,0"
+                            Command="{Binding Viewport.FrameCommand}" />
+                    <TextBlock Classes="section" Text="Bookmarks" />
+                    <Grid ColumnDefinitions="88,*,Auto,Auto">
+                      <TextBlock Text="Slot" />
+                      <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportViewModel.BookmarkSlots}"
+                                SelectedItem="{Binding Viewport.BookmarkSlot}" />
+                      <Button Grid.Column="2" Content="Go" Margin="4,0,0,0" Command="{Binding Viewport.GoToBookmarkCommand}"
+                              IsEnabled="{Binding Viewport.IsBookmarkSaved}" />
+                      <Button Grid.Column="3" Content="Save" Margin="4,0,0,0" Command="{Binding Viewport.SaveBookmarkCommand}" />
+                    </Grid>
+                    <TextBlock Classes="dim" Text="Ctrl+1…9 saves, 1…9 goes back" />
+                    <TextBlock Classes="section" Text="Camera position" />
+                    <TextBlock Classes="dim" Text="x y z  yaw pitch fov (degrees)" />
+                    <TextBox Text="{Binding Viewport.CameraText}" FontFamily="Consolas" />
+                    <TextBlock Classes="dim" Text="Not a valid camera" IsVisible="{Binding Viewport.CameraTextInvalid}" />
+                    <Button Content="Apply" HorizontalAlignment="Right" Command="{Binding Viewport.ApplyCameraCommand}" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <PathIcon Classes="small" Data="{StaticResource IconCamera}" />
+                <TextBlock Text="{Binding Viewport.ViewName}" VerticalAlignment="Center" />
+                <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+              </StackPanel>
+            </Button>
+
+            <Button Classes="menuButton" ToolTip.Tip="View mode">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <ItemsControl ItemsSource="{Binding Viewport.ViewModeGroups}" Width="200">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ViewModeGroup">
+                        <StackPanel Classes="menu">
+                          <TextBlock Classes="section" Text="{Binding Title}" />
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ViewModeItem">
+                                <RadioButton GroupName="ViewMode" Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <TextBlock Text="{Binding Viewport.ShadingLabel}" VerticalAlignment="Center" />
+                <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+              </StackPanel>
+            </Button>
+            <Button Classes="menuButton" IsVisible="{Binding Viewport.IsCollisionView}" ToolTip.Tip="Collision filters shown">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel MinWidth="180" Spacing="2">
+                    <TextBlock Classes="dim" Text="No colliders in this asset" IsVisible="{Binding !Viewport.HasCollisionGroups}" />
+                    <ItemsControl ItemsSource="{Binding Viewport.CollisionGroups}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ViewportFilterItem">
+                          <CheckBox IsChecked="{Binding IsShown}" ToolTip.Tip="{Binding Tip}">
+                            <Grid ColumnDefinitions="16,*,Auto" MinWidth="150">
+                              <Border Width="10" Height="10" Background="{Binding Brush}" VerticalAlignment="Center"
+                                      HorizontalAlignment="Left" />
+                              <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="2" Classes="dim" Text="{Binding Count}" Margin="12,0,0,0"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+                          </CheckBox>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <PathIcon Classes="small" Data="{StaticResource IconFilter}" />
+                <TextBlock Text="{Binding Viewport.CollisionFilterText}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="menuButton" IsVisible="{Binding Viewport.IsAiMapView}" ToolTip.Tip="AI maps shown">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel MinWidth="180" Spacing="2">
+                    <TextBlock Classes="dim" Text="No AI maps in this asset" IsVisible="{Binding !Viewport.HasAiMapGroups}" />
+                    <ItemsControl ItemsSource="{Binding Viewport.AiMapGroups}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ViewportFilterItem">
+                          <CheckBox IsChecked="{Binding IsShown}" ToolTip.Tip="{Binding Tip}">
+                            <Grid ColumnDefinitions="16,*,Auto" MinWidth="150">
+                              <Border Width="10" Height="10" Background="{Binding Brush}" VerticalAlignment="Center"
+                                      HorizontalAlignment="Left" />
+                              <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="2" Classes="dim" Text="{Binding Count}" Margin="12,0,0,0"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+                          </CheckBox>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <PathIcon Classes="small" Data="{StaticResource IconFilter}" />
+                <TextBlock Text="{Binding Viewport.AiMapFilterText}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+
+            <Button Classes="menuButton" ToolTip.Tip="What the viewport shows">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Classes="menu" Width="230">
+                    <TextBlock Classes="section" Text="Editor" />
+                    <CheckBox Content="Gizmos (G)" IsChecked="{Binding Viewport.ShowGizmos}" IsVisible="{Binding Viewport.IsSceneKind}"
+                              ToolTip.Tip="Off hides every editor aid below, as Unreal's game view" />
+                    <CheckBox Content="Grid" IsChecked="{Binding Viewport.ShowGrid}" />
+                    <CheckBox Content="Selection outline" IsChecked="{Binding Viewport.ShowSelectionOutline}"
+                              IsVisible="{Binding Viewport.IsSceneKind}" />
+                    <CheckBox Content="Point light icons" IsChecked="{Binding Viewport.ShowPointLights}"
+                              IsVisible="{Binding Viewport.IsSceneKind}" />
+                    <CheckBox Content="Spot light icons" IsChecked="{Binding Viewport.ShowSpotLights}"
+                              IsVisible="{Binding Viewport.IsSceneKind}" />
+                    <CheckBox Content="Directional light icons" IsChecked="{Binding Viewport.ShowDirectionalLights}"
+                              IsVisible="{Binding Viewport.IsSceneKind}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <CheckBox Content="Skeletons" IsChecked="{Binding Viewport.ShowSkeletons}" />
+                      <Button Grid.Column="1" Theme="{StaticResource ToolButtonTheme}" ToolTip.Tip="Skeleton display">
+                        <Button.Flyout>
+                          <Flyout Placement="RightEdgeAlignedTop">
+                            <StackPanel Classes="options" Width="280">
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Bones" />
+                                <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportDisplayViewModel.BoneStyles}"
+                                          SelectedIndex="{Binding Viewport.Display.Bones}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Joints" />
+                                <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportDisplayViewModel.JointStyles}"
+                                          SelectedIndex="{Binding Viewport.Display.Joints}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Local axes" />
+                                <CheckBox Grid.Column="1" IsChecked="{Binding Viewport.Display.JointAxes}"
+                                          ToolTip.Tip="X red, Y green, Z blue" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*,46">
+                                <TextBlock Text="Size" />
+                                <Slider Grid.Column="1" Minimum="0.1" Maximum="5" Value="{Binding Viewport.Display.BoneSize}" />
+                                <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.Display.BoneSize}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*,46">
+                                <TextBlock Text="Opacity" />
+                                <Slider Grid.Column="1" Minimum="0.05" Maximum="1" Value="{Binding Viewport.Display.BoneOpacity}" />
+                                <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Viewport.Display.BoneOpacity}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Show" />
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding Viewport.Display.Scopes}"
+                                          SelectedIndex="{Binding Viewport.Display.ScopeIndex}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Occluded" />
+                                <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportDisplayViewModel.OcclusionModes}"
+                                          SelectedIndex="{Binding Viewport.Display.Occlusion}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Coloring" />
+                                <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:ViewportDisplayViewModel.BoneColorModes}"
+                                          SelectedIndex="{Binding Viewport.Display.BoneColors}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*" IsVisible="{Binding Viewport.Display.IsUniformBoneColor}">
+                                <TextBlock Text="Color" />
+                                <ContentControl Grid.Column="1" Content="{Binding Viewport.Display.BoneColor}"
+                                                ContentTemplate="{StaticResource ColorField}" />
+                              </Grid>
+                              <Grid ColumnDefinitions="78,*">
+                                <TextBlock Text="Selection" />
+                                <ContentControl Grid.Column="1" Content="{Binding Viewport.Display.SelectedBoneColor}"
+                                                ContentTemplate="{StaticResource ColorField}" />
+                              </Grid>
+                              <Button Classes="defaults" Content="Defaults" Command="{Binding Viewport.Display.ResetSkeletonCommand}" />
+                            </StackPanel>
+                          </Flyout>
+                        </Button.Flyout>
+                        <PathIcon Classes="small" Data="{StaticResource IconTriangleRight}" />
+                      </Button>
+                    </Grid>
+                    <StackPanel Classes="menu" IsVisible="{Binding Viewport.IsSceneKind}">
+                      <TextBlock Classes="section" Text="Geometry" />
+                      <CheckBox Content="Static meshes" IsChecked="{Binding Viewport.ShowStaticMeshes}" />
+                      <CheckBox Content="Skinned meshes" IsChecked="{Binding Viewport.ShowSkinnedMeshes}" />
+                      <CheckBox Content="Decals" IsChecked="{Binding Viewport.ShowDecals}" />
+                      <CheckBox Content="Effects" IsChecked="{Binding Viewport.ShowEffects}" />
+                      <TextBlock Classes="section" Text="Lighting" />
+                      <CheckBox Content="Shadows" IsChecked="{Binding Viewport.ShowShadows}" />
+                      <CheckBox Content="Fog" IsChecked="{Binding Viewport.ShowFog}" />
+                      <CheckBox Content="Volumetric fog" IsChecked="{Binding Viewport.ShowVolumetricFog}" />
+                      <CheckBox Content="Local cubemaps" IsChecked="{Binding Viewport.ShowLocalCubemaps}" />
+                      <CheckBox Content="Sky" IsChecked="{Binding Viewport.ShowSky}" />
+                      <CheckBox Content="Post-process" IsChecked="{Binding Viewport.ShowPostProcess}" />
+                      <TextBlock Classes="section" Text="Level of detail" />
+                      <Grid ColumnDefinitions="60,*">
+                        <TextBlock Classes="dim" Text="Mesh LOD" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{x:Static vm:ViewportViewModel.LodOptions}"
+                                  SelectedItem="{Binding Viewport.ForcedLod}">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LodOption">
+                              <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </Grid>
+                      <CheckBox Content="Load every zone" IsChecked="{Binding Viewport.StreamAllZones}"
+                                ToolTip.Tip="Draws every zone and room, not only those near the camera" />
+                    </StackPanel>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <PathIcon Classes="small" Data="{StaticResource IconEye}" />
+                <TextBlock Text="Show" VerticalAlignment="Center" />
+                <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+              </StackPanel>
+            </Button>
+
+            <StackPanel Orientation="Horizontal" IsVisible="{Binding Viewport.HasLightStates}">
+              <TextBlock Classes="label" Text="Light:" Margin="8,0,0,0" />
+              <ComboBox Width="110" ItemsSource="{Binding Viewport.LightStates}" SelectedItem="{Binding Viewport.LightState}"
+                        ToolTip.Tip="Light environment state (time of day or situation)" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Editing: history, transform tools, snapping, camera speed. -->
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" IsVisible="{Binding Viewport.Is3D}">
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding Viewport.IsSceneKind}">
+            <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Viewport.UndoCommand}"
+                    IsEnabled="{Binding Viewport.CanUndo}" ToolTip.Tip="Undo (Ctrl+Z)">
+              <PathIcon Data="{StaticResource IconUndo}" />
+            </Button>
+            <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Viewport.RedoCommand}"
+                    IsEnabled="{Binding Viewport.CanRedo}" ToolTip.Tip="Redo (Ctrl+Y)">
+              <PathIcon Data="{StaticResource IconRedo}" />
+            </Button>
+            <Border Classes="separator" />
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.IsMoveTool}" ToolTip.Tip="Move (W)">
+              <PathIcon Data="{StaticResource IconMove}" />
+            </ToggleButton>
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.IsRotateTool}" ToolTip.Tip="Rotate (E)">
+              <PathIcon Data="{StaticResource IconRotate}" />
+            </ToggleButton>
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.IsScaleTool}" ToolTip.Tip="Scale (R)">
+              <PathIcon Data="{StaticResource IconScale}" />
+            </ToggleButton>
+            <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Viewport.ToggleSpaceCommand}"
+                    ToolTip.Tip="World or local axes (Ctrl+`)">
+              <Panel>
+                <PathIcon Data="{StaticResource IconWorld}" IsVisible="{Binding !Viewport.IsLocalSpace}" />
+                <PathIcon Data="{StaticResource IconCube}" IsVisible="{Binding Viewport.IsLocalSpace}" />
+              </Panel>
+            </Button>
+            <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Viewport.SnapToFloorCommand}"
+                    ToolTip.Tip="Drop to the floor (End)">
+              <PathIcon Data="{StaticResource IconFloor}" />
+            </Button>
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.IsMeasuring}"
+                          ToolTip.Tip="Measure: drag between two points">
+              <PathIcon Data="{StaticResource IconRuler}" />
+            </ToggleButton>
+            <Border Classes="separator" />
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.SnapMove}" Width="NaN" Padding="4,0"
+                          ToolTip.Tip="Snap moves">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <PathIcon Classes="small" Data="{StaticResource IconGrid}" />
+                <TextBlock Text="{Binding Viewport.MoveStep.Label}" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <Button Theme="{StaticResource ToolButtonTheme}" Width="12" Padding="0" ToolTip.Tip="Move step">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <ListBox ItemsSource="{x:Static vm:ViewportViewModel.MoveSteps}" SelectedItem="{Binding Viewport.MoveStep}"
+                           ItemTemplate="{StaticResource SnapStepItem}" MinWidth="80" />
+                </Flyout>
+              </Button.Flyout>
+              <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+            </Button>
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.SnapRotate}" Width="NaN" Padding="4,0"
+                          ToolTip.Tip="Snap rotations">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <PathIcon Classes="small" Data="{StaticResource IconRotate}" />
+                <TextBlock Text="{Binding Viewport.RotateStep.Label}" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <Button Theme="{StaticResource ToolButtonTheme}" Width="12" Padding="0" ToolTip.Tip="Rotation step">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <ListBox ItemsSource="{x:Static vm:ViewportViewModel.RotateSteps}" SelectedItem="{Binding Viewport.RotateStep}"
+                           ItemTemplate="{StaticResource SnapStepItem}" MinWidth="80" />
+                </Flyout>
+              </Button.Flyout>
+              <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+            </Button>
+            <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Viewport.SnapScale}" Width="NaN" Padding="4,0"
+                          ToolTip.Tip="Snap scaling">
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <PathIcon Classes="small" Data="{StaticResource IconScale}" />
+                <TextBlock Text="{Binding Viewport.ScaleStep.Label}" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <Button Theme="{StaticResource ToolButtonTheme}" Width="12" Padding="0" ToolTip.Tip="Scale step">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                  <ListBox ItemsSource="{x:Static vm:ViewportViewModel.ScaleSteps}" SelectedItem="{Binding Viewport.ScaleStep}"
+                           ItemTemplate="{StaticResource SnapStepItem}" MinWidth="80" />
+                </Flyout>
+              </Button.Flyout>
+              <PathIcon Width="8" Height="8" Data="{StaticResource IconTriangleDown}" />
+            </Button>
+            <Border Classes="separator" />
+            <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Viewport.SaveScenesCommand}"
+                    ToolTip.Tip="Save edited scenes...">
+              <PathIcon Data="{StaticResource IconSave}" />
+            </Button>
+          </StackPanel>
+          <Button Classes="menuButton" ToolTip.Tip="Camera speed">
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Classes="options" Width="240">
+                  <Grid ColumnDefinitions="60,*,46">
+                    <TextBlock Text="Speed" />
+                    <Slider Grid.Column="1" Minimum="-2" Maximum="3" Value="{Binding Viewport.CameraSpeedSlider}" />
+                    <TextBlock Grid.Column="2" Text="{Binding Viewport.CameraSpeedText}" />
+                  </Grid>
+                  <TextBlock Classes="dim" Text="Meters per second; the wheel changes it while flying" TextWrapping="Wrap" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+            <StackPanel Orientation="Horizontal" Spacing="3">
+              <PathIcon Classes="small" Data="{StaticResource IconCamera}" />
+              <TextBlock Text="{Binding Viewport.CameraSpeedText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+
+        <!-- In the toolbar: the native viewport cannot be overlaid. -->
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding Viewport.IsLoading}">
+            <ProgressBar IsIndeterminate="True" Width="90" MinWidth="0" VerticalAlignment="Center" />
+            <TextBlock Classes="dim" Text="Loading..." VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding Viewport.Message}" Foreground="#C06060" VerticalAlignment="Center" MaxWidth="480"
+                     TextTrimming="CharacterEllipsis" IsVisible="{Binding Viewport.HasMessage}"
+                     ToolTip.Tip="{Binding Viewport.Message}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <Panel x:Name="HostSlot" Background="{DynamicResource ViewportBrush}" />
+  </DockPanel>
+</UserControl>
