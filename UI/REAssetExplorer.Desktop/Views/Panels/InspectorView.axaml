@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             xmlns:m="using:REAssetExplorer.Desktop.Models"
+             xmlns:c="using:REAssetExplorer.Desktop.Controls"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.InspectorView"
+             x:DataType="d:InspectorTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <TextBox PlaceholderText="Search" Text="{Binding Inspector.FilterText}" />
+    </Border>
+    <Border DockPanel.Dock="Top" Padding="4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+            IsVisible="{Binding Inspector.HasTarget}">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <PathIcon Data="{Binding Inspector.Icon}" Foreground="{Binding Inspector.IconBrush}" Margin="2,0,6,0" />
+        <TextBox Grid.Column="1" Classes="field" Text="{Binding Inspector.Title, Mode=OneWay}" />
+        <Border Grid.Column="2" Margin="4,0,0,0" Height="19" Padding="8,0" Background="{DynamicResource ButtonBrush}"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1">
+          <TextBlock Text="{Binding Inspector.Subtitle}" VerticalAlignment="Center" />
+        </Border>
+      </Grid>
+    </Border>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Inspector.Sections}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:InspectorSection">
+              <StackPanel>
+                <Border Classes="sectionHeader" Tapped="OnSectionTapped">
+                  <Grid ColumnDefinitions="20,*">
+                    <Panel>
+                      <PathIcon Classes="small" Data="{StaticResource IconTriangleRight}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding !IsExpanded}" />
+                      <PathIcon Classes="small" Data="{StaticResource IconTriangleDown}" Foreground="{DynamicResource TextDimBrush}" IsVisible="{Binding IsExpanded}" />
+                    </Panel>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextBrightBrush}" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Rows}" IsVisible="{Binding IsExpanded}" Margin="0,2,0,4">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InspectorRow">
+                      <Grid MinHeight="22" ColumnDefinitions="0.42*,0.58*" Margin="18,0,6,0">
+                        <TextBlock Text="{Binding Key}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding Key}" IsVisible="{Binding !IsElement}" />
+                        <Grid IsVisible="{Binding IsElement}" Margin="6,0,0,0" ColumnDefinitions="16,*" RowDefinitions="*,*">
+                          <Border Classes="treeGuide" Width="1" HorizontalAlignment="Center" />
+                          <Border Grid.Row="1" Classes="treeGuide" Width="1" HorizontalAlignment="Center"
+                                  IsVisible="{Binding !IsLastElement}" />
+                          <Border Classes="treeGuide" Height="1" Width="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                          <TextBlock Grid.Column="1" Grid.RowSpan="2" Text="{Binding Key}" Classes="dim" Margin="3,0,0,0"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                        <TextBox Grid.Column="1" Classes="field" Text="{Binding Value, Mode=OneWay}" IsVisible="{Binding IsText}"
+                                 ToolTip.Tip="{Binding Value}" />
+                        <TextBox Grid.Column="1" Classes="field wrap" Text="{Binding Value, Mode=OneWay}"
+                                 IsVisible="{Binding IsLongText}" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,2" />
+                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue, Mode=OneWay}" IsVisible="{Binding IsBool}"
+                                  IsHitTestVisible="False" Focusable="False" />
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Parts}" IsVisible="{Binding IsVector}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                              <TextBox Classes="field" Text="{Binding Mode=OneWay}" Margin="0,0,2,0" />
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ContentControl Grid.Column="1" Content="{Binding Asset}" IsVisible="{Binding IsReference}" Margin="0,3">
+                          <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="vm:AssetReference">
+                              <Grid ColumnDefinitions="Auto,*">
+                                <Border Classes="assetThumb" DoubleTapped="OnAssetThumbnailDoubleTapped"
+                                        ToolTip.Tip="{Binding CurrentPath}">
+                                  <Panel>
+                                    <PathIcon Width="22" Height="22" Data="{Binding Icon}" Foreground="{Binding KindBrush}"
+                                              IsVisible="{Binding !HasThumbnail}" />
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                    <Border Height="2" VerticalAlignment="Bottom" Background="{Binding KindBrush}" />
+                                  </Panel>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center" Spacing="3">
+                                  <Panel>
+                                    <Button Classes="assetPicker" IsVisible="{Binding CanChange}" ToolTip.Tip="{Binding CurrentPath}">
+                                      <Button.Flyout>
+                                        <Flyout Placement="BottomEdgeAlignedLeft" Opening="OnPickerOpening">
+                                          <DockPanel Width="440" Height="380">
+                                            <TextBox DockPanel.Dock="Top" PlaceholderText="Search" Text="{Binding PickerFilter}" />
+                                            <TextBlock DockPanel.Dock="Bottom" Classes="dim" FontSize="11" Margin="2,4,0,0"
+                                                       Text="{Binding PickerStatus}" />
+                                            <ListBox Classes="flat" Margin="0,4,0,0" ItemsSource="{Binding PickerItems}"
+                                                     ItemContainerTheme="{StaticResource RowItemTheme}"
+                                                     Tapped="OnPickerItemTapped" KeyDown="OnPickerKeyDown">
+                                              <ListBox.ItemTemplate>
+                                                <DataTemplate x:DataType="m:AssetNode">
+                                                  <Grid Height="20" ColumnDefinitions="20,Auto,*" ToolTip.Tip="{Binding FullPath}">
+                                                    <PathIcon Classes="small" Data="{Binding Icon}" Foreground="{Binding KindBrush}" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding FolderPath}" Classes="dim" FontSize="11"
+                                                               Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                  </Grid>
+                                                </DataTemplate>
+                                              </ListBox.ItemTemplate>
+                                            </ListBox>
+                                          </DockPanel>
+                                        </Flyout>
+                                      </Button.Flyout>
+                                      <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding Name}" Classes.missing="{Binding IsMissing}"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <PathIcon Grid.Column="1" Classes="small" Data="{StaticResource IconTriangleDown}"
+                                                  Foreground="{DynamicResource TextDimBrush}" />
+                                      </Grid>
+                                    </Button>
+                                    <TextBox Classes="field" Classes.missing="{Binding IsMissing}" Text="{Binding Name, Mode=OneWay}"
+                                             IsVisible="{Binding !CanChange}" ToolTip.Tip="{Binding CurrentPath}" />
+                                  </Panel>
+                                  <StackPanel Orientation="Horizontal" Spacing="1">
+                                    <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding UseSelectedCommand}"
+                                            IsVisible="{Binding CanChange}" ToolTip.Tip="Use the asset selected in the Asset Browser">
+                                      <PathIcon Classes="small" Data="{StaticResource IconArrowLeft}" />
+                                    </Button>
+                                    <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding BrowseCommand}"
+                                            ToolTip.Tip="Browse to the asset in the Asset Browser">
+                                      <PathIcon Classes="small" Data="{StaticResource IconSearch}" />
+                                    </Button>
+                                    <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding ResetCommand}"
+                                            IsVisible="{Binding IsOverridden}" ToolTip.Tip="Reset to the original asset">
+                                      <PathIcon Classes="small" Data="{StaticResource IconReset}" Foreground="#D8B04A" />
+                                    </Button>
+                                  </StackPanel>
+                                </StackPanel>
+                              </Grid>
+                            </DataTemplate>
+                          </ContentControl.ContentTemplate>
+                        </ContentControl>
+                        <ContentControl Grid.Column="1" Content="{Binding Parameter}" IsVisible="{Binding IsParameter}">
+                          <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="vm:MaterialParameter">
+                              <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Button Classes="colorSwatch" IsVisible="{Binding IsColor}" Margin="0,0,3,0"
+                                        Background="{Binding SwatchBrush}" ToolTip.Tip="Pick a color">
+                                  <Button.Flyout>
+                                    <Flyout Placement="BottomEdgeAlignedLeft">
+                                      <c:ColorPickerPanel Width="236" />
+                                    </Flyout>
+                                  </Button.Flyout>
+                                </Button>
+                                <ItemsControl Grid.Column="1" ItemsSource="{Binding Components}">
+                                  <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                      <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                  </ItemsControl.ItemsPanel>
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ParameterComponent">
+                                      <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,0,2,0">
+                                        <Border Width="2" Background="{Binding AxisBrush}" IsVisible="{Binding HasAxis}" />
+                                        <TextBlock Grid.Column="1" Classes="dim" FontSize="10" Margin="0,0,3,0"
+                                                   VerticalAlignment="Center" Text="{Binding Label}"
+                                                   IsVisible="{Binding ShowLabel}" />
+                                        <c:NumberScrubBox Grid.Column="2" Classes="number" Value="{Binding Value}"
+                                                          ToolTip.Tip="{Binding Label}" />
+                                      </Grid>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Grid.Column="2" Theme="{StaticResource ToolButtonTheme}" Command="{Binding ResetCommand}"
+                                        IsVisible="{Binding IsEdited}" ToolTip.Tip="Reset to the file's value">
+                                  <PathIcon Classes="small" Data="{StaticResource IconReset}" Foreground="#D8B04A" />
+                                </Button>
+                              </Grid>
+                            </DataTemplate>
+                          </ContentControl.ContentTemplate>
+                        </ContentControl>
+                        <ContentControl Grid.Column="1" Content="{Binding Asset}" IsVisible="{Binding IsElement}" Margin="0,2">
+                          <ContentControl.ContentTemplate>
+                            <DataTemplate x:DataType="vm:AssetReference">
+                              <Grid Classes="elementLink" ColumnDefinitions="Auto,*" Tapped="OnAssetElementTapped"
+                                    ToolTip.Tip="Open in the Material Editor">
+                                <Border Classes="assetThumb small">
+                                  <Panel>
+                                    <PathIcon Width="16" Height="16" Data="{Binding Icon}" Foreground="{Binding KindBrush}"
+                                              IsVisible="{Binding !HasThumbnail}" />
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                  </Panel>
+                                </Border>
+                                <Border Grid.Column="1" Classes="elementName" Margin="6,0,0,0" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </Border>
+                              </Grid>
+                            </DataTemplate>
+                          </ContentControl.ContentTemplate>
+                        </ContentControl>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

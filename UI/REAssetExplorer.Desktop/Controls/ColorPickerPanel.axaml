@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             xmlns:c="using:REAssetExplorer.Desktop.Controls"
+             x:Class="REAssetExplorer.Desktop.Controls.ColorPickerPanel"
+             x:DataType="vm:MaterialParameter">
+  <StackPanel Spacing="6" Margin="2">
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <Panel x:Name="SvArea" Width="180" Height="180" Cursor="Cross" Background="Transparent"
+             PointerPressed="OnSvPressed" PointerMoved="OnSvMoved" PointerReleased="OnAreaReleased">
+        <Border x:Name="HueLayer" Background="Red" />
+        <Border>
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Color="#FFFFFFFF" Offset="0" />
+              <GradientStop Color="#00FFFFFF" Offset="1" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+        <Border>
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Color="#00000000" Offset="0" />
+              <GradientStop Color="#FF000000" Offset="1" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+        <Border BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" />
+        <Canvas>
+          <Ellipse x:Name="SvHandle" Width="10" Height="10" Stroke="White" StrokeThickness="1.5" />
+        </Canvas>
+      </Panel>
+
+      <Panel x:Name="HueArea" Width="16" Height="180" Cursor="Hand" Background="Transparent"
+             PointerPressed="OnHuePressed" PointerMoved="OnHueMoved" PointerReleased="OnAreaReleased">
+        <Border BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+              <GradientStop Color="#FF0000" Offset="0" />
+              <GradientStop Color="#FFFF00" Offset="0.1667" />
+              <GradientStop Color="#00FF00" Offset="0.3333" />
+              <GradientStop Color="#00FFFF" Offset="0.5" />
+              <GradientStop Color="#0000FF" Offset="0.6667" />
+              <GradientStop Color="#FF00FF" Offset="0.8333" />
+              <GradientStop Color="#FF0000" Offset="1" />
+            </LinearGradientBrush>
+          </Border.Background>
+        </Border>
+        <Canvas>
+          <Border x:Name="HueHandle" Width="16" Height="3" BorderBrush="White" BorderThickness="1" />
+        </Canvas>
+      </Panel>
+
+      <Panel x:Name="AlphaArea" Width="16" Height="180" Cursor="Hand" Background="#3A3A3A"
+             PointerPressed="OnAlphaPressed" PointerMoved="OnAlphaMoved" PointerReleased="OnAreaReleased">
+        <Border x:Name="AlphaLayer" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" />
+        <Canvas>
+          <Border x:Name="AlphaHandle" Width="16" Height="3" BorderBrush="White" BorderThickness="1" />
+        </Canvas>
+      </Panel>
+    </StackPanel>
+
+    <Grid ColumnDefinitions="Auto,Auto,*" Height="20">
+      <Border Width="40" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" ToolTip.Tip="Before / now">
+        <Grid ColumnDefinitions="*,*">
+          <Border x:Name="OriginalSwatch" />
+          <Border Grid.Column="1" Background="{Binding SwatchBrush}" />
+        </Grid>
+      </Border>
+      <TextBlock Grid.Column="1" Classes="dim" Text="Hex" Margin="8,0,4,0" VerticalAlignment="Center" />
+      <TextBox x:Name="HexBox" Grid.Column="2" MinHeight="20" Height="20" Padding="4,0" KeyDown="OnHexKeyDown"
+               LostFocus="OnHexLostFocus" />
+    </Grid>
+
+    <ItemsControl ItemsSource="{Binding Components}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Rows="1" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:ParameterComponent">
+          <Grid ColumnDefinitions="Auto,*" Margin="0,0,2,0">
+            <Border Width="2" Background="{Binding AxisBrush}" />
+            <c:NumberScrubBox Grid.Column="1" Classes="number" Value="{Binding Value}" ToolTip.Tip="{Binding Label}" />
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>
