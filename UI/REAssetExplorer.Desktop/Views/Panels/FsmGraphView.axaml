@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             xmlns:c="using:REAssetExplorer.Desktop.Controls"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.FsmGraphView"
+             x:DataType="d:FsmGraphTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Graph.UpCommand}" ToolTip.Tip="Up to the parent state machine (Backspace)">
+            <PathIcon Data="{StaticResource IconArrowUp}" />
+          </Button>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Graph.FitCommand}" ToolTip.Tip="Frame the graph (F)">
+            <PathIcon Data="{StaticResource IconFrame}" />
+          </Button>
+          <Border Classes="separator" />
+          <TextBlock Text="{Binding Graph.PathText}" VerticalAlignment="Center" Margin="4,0" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                   Classes="dim" Text="{Binding Graph.StatusText}" />
+      </DockPanel>
+    </Border>
+    <c:FsmGraphCanvas Graph="{Binding Graph}" />
+  </DockPanel>
+</UserControl>
