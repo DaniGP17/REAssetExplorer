@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             xmlns:c="using:REAssetExplorer.Desktop.Controls"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.GuiPreviewView"
+             x:DataType="d:GuiPreviewTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Preview.FitCommand}" ToolTip.Tip="Fit screen (F)">
+            <PathIcon Data="{StaticResource IconFrame}" />
+          </Button>
+          <TextBlock Classes="dim mono" Text="{Binding Preview.ZoomText}" VerticalAlignment="Center" MinWidth="42" Margin="4,0" />
+          <Border Classes="separator" />
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.ShowHidden}"
+                        ToolTip.Tip="Show elements whose Visible is off (clips turn many on)">
+            <PathIcon Data="{StaticResource IconEyeOff}" />
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.ShowBounds}" ToolTip.Tip="Element bounds">
+            <PathIcon Data="{StaticResource IconSubmesh}" />
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.ShowHitAreas}" ToolTip.Tip="Hit areas">
+            <PathIcon Data="{StaticResource IconCheck}" />
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.CheckerBackground}"
+                        ToolTip.Tip="Checkerboard background">
+            <PathIcon Data="{StaticResource IconGrid}" />
+          </ToggleButton>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                   Classes="dim" Text="{Binding Preview.StatusText}" />
+      </DockPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1" IsVisible="{Binding Preview.HasClips}">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal" Spacing="1">
+          <TextBlock Classes="label" Text="Clips:" />
+          <ComboBox Width="220" ItemsSource="{Binding Preview.ClipOwners}" SelectedItem="{Binding Preview.SelectedOwner}"
+                    ToolTip.Tip="Element whose clips play (selecting in the hierarchy picks the nearest one)" />
+          <ComboBox Width="150" Margin="3,0,0,0" ItemsSource="{Binding Preview.OwnerClips}"
+                    SelectedItem="{Binding Preview.SelectedClip}" />
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Preview.PlayClipCommand}" ToolTip.Tip="Play this clip">
+            <PathIcon Data="{StaticResource IconPlay}" />
+          </Button>
+          <Border Classes="separator" />
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.IsPlaying}"
+                        ToolTip.Tip="{Binding Preview.PlayTip}">
+            <PathIcon Data="{StaticResource IconPause}" />
+          </ToggleButton>
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Preview.RestartCommand}"
+                  ToolTip.Tip="Restart: every element back to its starting state">
+            <PathIcon Data="{StaticResource IconReset}" />
+          </Button>
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.LoopClips}" ToolTip.Tip="Loop clips">
+            <PathIcon Data="{StaticResource IconRefresh}" />
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource ToolToggleTheme}" IsChecked="{Binding Preview.Animate}"
+                        ToolTip.Tip="Apply clips (off: the values stored in the file)">
+            <PathIcon Data="{StaticResource IconMotion}" />
+          </ToggleButton>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Classes="dim mono" Text="{Binding Preview.ClipStatus}" VerticalAlignment="Center"
+                   MinWidth="130" Margin="6,0" />
+        <Slider Minimum="0" Maximum="{Binding Preview.ClipLength}" Value="{Binding Preview.ClipFrame}" Margin="8,0"
+                VerticalAlignment="Center" ToolTip.Tip="Frame of the selected element's clip (dragging pauses)" />
+      </DockPanel>
+    </Border>
+    <c:GuiCanvas Preview="{Binding Preview}" />
+  </DockPanel>
+</UserControl>
