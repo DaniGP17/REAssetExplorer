@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.MessageTableView"
+             x:DataType="d:MessageTableTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+          <TextBlock Classes="label" Text="Language:" />
+          <ComboBox Width="180" ItemsSource="{Binding Messages.Languages}" SelectedItem="{Binding Messages.SelectedLanguage}" />
+          <TextBlock Classes="dim" Text="{Binding Messages.StatusText}" VerticalAlignment="Center" Margin="10,0" />
+        </StackPanel>
+        <TextBox Margin="4,0,0,0" PlaceholderText="Search keys and text" Text="{Binding Messages.SearchText}" />
+      </DockPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Height="20" Background="{DynamicResource SectionBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="300,*" Margin="6,0,0,0">
+        <TextBlock Text="Key" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="Text" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+    <ListBox Classes="flat" ItemsSource="{Binding Messages.Rows}" SelectedItem="{Binding Messages.SelectedRow}"
+             ItemContainerTheme="{StaticResource RowItemTheme}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:MessageRow">
+          <Grid Height="20" ColumnDefinitions="300,*" Background="Transparent">
+            <TextBlock Text="{Binding Key}" Classes="dim" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Margin="0,0,8,0" ToolTip.Tip="{Binding Key}" />
+            <TextBlock Grid.Column="1" Text="{Binding Text}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>
