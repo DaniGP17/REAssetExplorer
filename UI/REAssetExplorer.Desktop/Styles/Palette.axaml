@@ -1,0 +1,197 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <SolidColorBrush x:Key="BaseBrush" Color="#181818" />
+  <SolidColorBrush x:Key="TitleBarBrush" Color="#1C1C1C" />
+  <SolidColorBrush x:Key="PanelBrush" Color="#232323" />
+  <SolidColorBrush x:Key="ToolbarBrush" Color="#282828" />
+  <SolidColorBrush x:Key="SectionBrush" Color="#323232" />
+  <SolidColorBrush x:Key="ButtonBrush" Color="#333333" />
+  <SolidColorBrush x:Key="HoverBrush" Color="#3A3A3A" />
+  <SolidColorBrush x:Key="PressedBrush" Color="#444444" />
+  <SolidColorBrush x:Key="BorderBrush" Color="#3C3C3C" />
+  <SolidColorBrush x:Key="BorderLightBrush" Color="#4B4B4B" />
+  <SolidColorBrush x:Key="InputBrush" Color="#1A1A1A" />
+  <SolidColorBrush x:Key="SelectionBrush" Color="#2D4B6E" />
+  <SolidColorBrush x:Key="SelectionInactiveBrush" Color="#3A3D41" />
+  <SolidColorBrush x:Key="FocusBrush" Color="#3A78D6" />
+  <SolidColorBrush x:Key="TextBrush" Color="#D4D4D4" />
+  <SolidColorBrush x:Key="TextBrightBrush" Color="#EFEFEF" />
+  <SolidColorBrush x:Key="TextDimBrush" Color="#969696" />
+  <SolidColorBrush x:Key="TextDisabledBrush" Color="#5E5E5E" />
+  <SolidColorBrush x:Key="IconBrush" Color="#C8C8C8" />
+  <SolidColorBrush x:Key="FolderIconBrush" Color="#D6B25E" />
+  <SolidColorBrush x:Key="ViewportBrush" Color="#000000" />
+
+  <FontFamily x:Key="UiFont">Segoe UI</FontFamily>
+  <FontFamily x:Key="MonoFont">Consolas</FontFamily>
+
+  <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#232323" />
+  <SolidColorBrush x:Key="ThemeBorderLowBrush" Color="#3C3C3C" />
+  <SolidColorBrush x:Key="ThemeBorderMidBrush" Color="#4B4B4B" />
+  <SolidColorBrush x:Key="ThemeBorderHighBrush" Color="#5A5A5A" />
+  <SolidColorBrush x:Key="ThemeControlLowBrush" Color="#1A1A1A" />
+  <SolidColorBrush x:Key="ThemeControlMidBrush" Color="#333333" />
+  <SolidColorBrush x:Key="ThemeControlMidHighBrush" Color="#3A3A3A" />
+  <SolidColorBrush x:Key="ThemeControlHighBrush" Color="#454545" />
+  <SolidColorBrush x:Key="ThemeControlVeryHighBrush" Color="#555555" />
+  <SolidColorBrush x:Key="ThemeControlHighlightLowBrush" Color="#3A3A3A" />
+  <SolidColorBrush x:Key="ThemeControlHighlightMidBrush" Color="#444444" />
+  <SolidColorBrush x:Key="ThemeControlHighlightHighBrush" Color="#505050" />
+  <SolidColorBrush x:Key="ThemeControlTransparentBrush" Color="Transparent" />
+  <SolidColorBrush x:Key="ThemeForegroundBrush" Color="#D4D4D4" />
+  <SolidColorBrush x:Key="ThemeForegroundLowBrush" Color="#8A8A8A" />
+  <SolidColorBrush x:Key="HighlightBrush" Color="#2D4B6E" />
+  <SolidColorBrush x:Key="HighlightForegroundBrush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="ThemeAccentBrush" Color="#3A78D6" />
+  <SolidColorBrush x:Key="ErrorBrush" Color="#E05A5A" />
+  <Color x:Key="ThemeBackgroundColor">#232323</Color>
+  <Color x:Key="ThemeForegroundColor">#D4D4D4</Color>
+  <Color x:Key="ThemeAccentColor">#3A78D6</Color>
+  <Color x:Key="HighlightColor">#2D4B6E</Color>
+  <Thickness x:Key="ThemeBorderThickness">1</Thickness>
+  <x:Double x:Key="FontSizeSmall">11</x:Double>
+  <x:Double x:Key="FontSizeNormal">12</x:Double>
+  <x:Double x:Key="FontSizeLarge">14</x:Double>
+  <x:Double x:Key="ScrollBarThickness">12</x:Double>
+
+  <ControlTheme x:Key="RowItemTheme" TargetType="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Padding="{TemplateBinding Padding}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Background" Value="{DynamicResource SelectionInactiveBrush}" />
+    </Style>
+    <Style Selector="^:selected:focus-within">
+      <Setter Property="Background" Value="{DynamicResource SelectionBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="ToolButtonTheme" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource IconBrush}" />
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource PressedBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="ColumnHeaderTheme" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,1,0">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{DynamicResource PressedBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="ToolToggleTheme" TargetType="ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="#2A3F5C" />
+      <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Like ToolToggleTheme but sized to its content, for toggles that carry a label (e.g. log level filters). -->
+  <ControlTheme x:Key="FilterToggleTheme" TargetType="ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="6,3" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="#2A3F5C" />
+      <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
+    </Style>
+    <Style Selector="^:not(:checked)">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="CaptionButtonTheme" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Width" Value="46" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+    </Style>
+    <Style Selector="^.close:pointerover">
+      <Setter Property="Background" Value="#C42B1C" />
+    </Style>
+  </ControlTheme>
+
+</ResourceDictionary>

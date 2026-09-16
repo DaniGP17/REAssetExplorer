@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:REAssetExplorer.Desktop.ViewModels"
+             xmlns:d="using:REAssetExplorer.Desktop.ViewModels.Docking"
+             x:Class="REAssetExplorer.Desktop.Views.Panels.LogView"
+             x:DataType="d:LogTool"
+             Background="{DynamicResource PanelBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Classes="toolbar" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="2">
+          <Button Theme="{StaticResource ToolButtonTheme}" Command="{Binding Main.Log.ClearCommand}" ToolTip.Tip="Clear">
+            <PathIcon Data="{StaticResource IconTrash}" />
+          </Button>
+          <Border Classes="separator" />
+          <ToggleButton Theme="{StaticResource FilterToggleTheme}" IsChecked="{Binding Main.Log.ShowInfo}" ToolTip.Tip="Show info messages">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Classes="small" Data="{StaticResource IconAlert}" Foreground="#7D8591" />
+              <TextBlock Text="{Binding Main.Log.InfoCount}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource FilterToggleTheme}" IsChecked="{Binding Main.Log.ShowWarning}" ToolTip.Tip="Show warnings">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Classes="small" Data="{StaticResource IconAlert}" Foreground="#C8A040" />
+              <TextBlock Text="{Binding Main.Log.WarningCount}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton Theme="{StaticResource FilterToggleTheme}" IsChecked="{Binding Main.Log.ShowError}" ToolTip.Tip="Show errors">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Classes="small" Data="{StaticResource IconAlert}" Foreground="#C85050" />
+              <TextBlock Text="{Binding Main.Log.ErrorCount}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Right" Classes="dim" Text="{Binding Main.Log.StatusText}" VerticalAlignment="Center" Margin="6,0" />
+        <TextBox Margin="6,0,0,0" PlaceholderText="Buscar en el registro" Text="{Binding Main.Log.SearchText}" />
+      </DockPanel>
+    </Border>
+    <ListBox x:Name="LogList" Classes="flat" ItemsSource="{Binding Main.Log.FilteredEntries}"
+             ItemContainerTheme="{StaticResource RowItemTheme}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:LogEntry">
+          <Grid ColumnDefinitions="70,52,*" Margin="6,0">
+            <SelectableTextBlock Text="{Binding Time}" Classes="mono" Foreground="{DynamicResource TextDisabledBrush}" />
+            <SelectableTextBlock Grid.Column="1" Text="{Binding LevelText}" Classes="mono" Foreground="{Binding LevelBrush}" />
+            <SelectableTextBlock Grid.Column="2" Text="{Binding Text}" Classes="mono" Foreground="{Binding MessageBrush}"
+                                 TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</UserControl>
